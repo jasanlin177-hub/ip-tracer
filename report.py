@@ -50,6 +50,10 @@ STYLE = """
   .doc .risk-HIGH{background:#f5e3d0;color:#8a2a1f} .doc .risk-MEDIUM{background:#f7ecd6;color:#7a5a06}
   .doc .risk-LOW{background:#e6ece3;color:#2c5240}
   .doc footer{margin-top:1.5rem;font-size:.78rem;color:#8a7a66;border-top:1px solid #e2d8c6;padding-top:.5rem}
+  .doc .srclinks{display:flex;gap:.6rem;flex-wrap:wrap;margin:.5rem 0}
+  .doc .srclinks a{display:inline-block;background:#f2ece0;border:1px solid #ddd0bd;border-radius:4px;
+    padding:.35rem .8rem;font-size:.85rem;color:#1e3a5f;text-decoration:none;font-weight:600}
+  .doc .srclinks a:hover{background:#e6ddc9}
 """
 
 
@@ -154,6 +158,15 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
 <span class="badge rpki-{_esc(rpki.get('status'))}">{_esc(rpki.get('status','unknown')).upper()}</span>
 　<span class="meta">valid=已授權可信／invalid=疑似劫持／unknown=無 ROA 無法驗證</span></p>
 {proxy_html}
+<h2>🔗 原始工具查證連結</h2>
+<p class="meta">以上為系統自動整合研判，若需自行比對原始資料來源存證，可點選以下官方查詢頁面（會開新分頁，帶入本次查詢的 IP／網段）：</p>
+<div class="srclinks">
+<a href="https://rdap.org/ip/{_esc(ip)}" target="_blank" rel="noopener">📜 RDAP 原始資料（rdap.org）</a>
+<a href="https://lookup.icann.org/en/lookup" target="_blank" rel="noopener">📜 ICANN RDAP Lookup（需自行貼上 IP）</a>
+{"<a href='https://bgp.tools/prefix/" + _esc(a['bgp_prefix']) + "' target='_blank' rel='noopener'>🪧 bgp.tools 路由查詢</a>" if a.get('bgp_prefix') else ""}
+<a href="https://www.ip2proxy.com/zh_tw/demo" target="_blank" rel="noopener">🛡️ IP2Proxy 快查（需自行貼上 IP）</a>
+</div>
+
 <h2>🚨 科技偵查發文調閱建議</h2>
 {advice}
 
