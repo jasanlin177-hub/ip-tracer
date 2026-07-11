@@ -45,6 +45,15 @@ python batch.py                      # 批次範例（多 IP → CSV）
 - **RPKI**：RIPEstat `rpki-validation`（valid / invalid / unknown）
 - **機房/Proxy**：IP2Location.io（IP2Proxy，免金鑰 1000/日，給金鑰更完整）＋ ip-api.com（proxy/hosting/mobile）＋ ASN 關鍵字/BGP 分租結構啟發式
 
+## 原始工具查證連結
+每份報告最後附「🔗 原始工具查證連結」，一鍵帶入本次查詢的 IP／網段開新分頁核對：
+- RDAP 原始資料（`rdap.org/ip/{ip}`，與本系統查的是同一份權威資料）
+- ICANN RDAP Lookup 官方頁面（該站 `?q=` 參數不支援帶入，需自行貼上 IP）
+- bgp.tools 路由查詢（`bgp.tools/prefix/{網段}`，已帶入最精準網段）
+- IP2Proxy 快查官方頁面（需自行貼上 IP）
+
+供偏好「自己查原始工具再截圖存證」的同仁快速交叉比對，而非只信任本系統整合後的研判結果。
+
 ## 機房/VPN/Proxy 判定邏輯
 綜合三來源分級 HIGH / MEDIUM / LOW：
 - **HIGH**：IP2Proxy/ip-api 標記 Proxy/VPN，或名稱含防彈機房關鍵字
@@ -79,6 +88,11 @@ python batch.py                      # 批次範例（多 IP → CSV）
 
 ## 時效性
 BGP 路由具時效，正式辦案請用「回溯案發時間點路由」並保全原始 API 回應（單筆頁面下方「原始 API 回應」可展開存證）。
+
+## 時區
+Streamlit Cloud 伺服器跑 UTC，所有顯示給使用者的時間（報告產製時間、下載檔名）一律經 `tracer.now_tw()`
+轉換為台灣時間並標註「（UTC+8）」，避免時間顯示少 8 小時、日期跳到前一天。日後若新增顯示時間的地方，
+記得用 `tracer.now_tw()` 而非直接呼叫 `datetime.now()`。
 
 ## 可擴充
 - RDAP 歷史版本與 BGP 時間軸比對圖
