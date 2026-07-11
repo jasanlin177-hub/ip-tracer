@@ -1,0 +1,10 @@
+[theme]
+primaryColor = "#1a3c6e"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f2f5fa"
+textColor = "#222222"
+font = "sans serif"
+
+[server]
+# Streamlit Community Cloud 會自動處理 port/headless，本機執行沿用預設即可
+headless = true

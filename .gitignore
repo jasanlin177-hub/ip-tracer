@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# 本機測試產出（不需進版控）
+*.log
+sample_report.html
+sample_batch_report.html
+rdap_test.json
