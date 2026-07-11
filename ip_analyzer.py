@@ -2,8 +2,10 @@
 """
 科偵 IP 智慧溯源分析系統 — Streamlit 主程式
 執行： streamlit run ip_analyzer.py
+
+查詢結果直接重用 report.py / batch.py 的 HTML 渲染邏輯（render_content），
+與下載的 HTML 鑑識報告是同一套視覺，不再用 Streamlit 原生元件拼版面。
 """
-import html as _html
 import datetime as dt
 
 import streamlit as st
@@ -15,76 +17,36 @@ import report as report_mod
 st.set_page_config(page_title="科偵 IP 智慧溯源分析系統", page_icon="⚙️", layout="wide")
 
 # --------------------------------------------------------------------------- #
-# 全域樣式（Tailwind 風：slate 底、白色圓角卡片、藍色 accent、柔和陰影）
+# 全域樣式：直接注入 report.STYLE（司法公文風），查詢結果與 HTML 報告視覺完全一致
 # --------------------------------------------------------------------------- #
-st.markdown("""
+st.markdown(f"""
 <style>
-  html, body, [class*="css"] { font-family:Georgia,"Noto Serif TC","Microsoft JhengHei",serif; }
-  .stApp { background:#f7f3ea; }
-  .block-container { padding-top:1.9rem; max-width:1060px; }
-  /* 司法公文 hero：米色公文紙卡 + 墨藍雙線 + 右上印信 */
-  .kkb-hero{
-    background:#fdfbf6; border:1px solid #e2d8c6; box-shadow:0 1px 4px rgba(0,0,0,.06);
-    padding:1.1rem 1.5rem; margin:.1rem 0 1.8rem; border-bottom:3px solid #1e3a5f;
-    display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;
-  }
-  .kkb-hero h1{ color:#1e3a5f; font-size:1.5rem; font-weight:700; margin:0; letter-spacing:1px; }
-  .kkb-hero p{ color:#6b5d4f; font-size:.9rem; margin:.4rem 0 0; }
-  .kkb-hero .seal{ width:46px; height:46px; border:2px solid #b23a2e; color:#b23a2e; border-radius:6px;
-    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;
-    transform:rotate(-8deg); flex-shrink:0; }
-  /* 提示框：公文紙質感 */
-  [data-testid="stAlert"]{ border-radius:6px; box-shadow:none; border:1px solid #e2d8c6; background:#fdfbf6; }
-  /* 指標卡：公文紙卡 */
-  [data-testid="stMetric"]{ background:#fdfbf6; border:1px solid #e2d8c6; border-radius:6px;
-    padding:.9rem 1rem; box-shadow:none; }
-  [data-testid="stMetricValue"]{ color:#1e3a5f; }
-  /* 側邊欄 */
-  [data-testid="stSidebar"]{ background:#fdfbf6; border-right:1px solid #e2d8c6; }
-  /* 按鈕：墨藍框 */
-  .stButton>button, .stDownloadButton>button{ border-radius:5px; font-weight:600; border-color:#1e3a5f; color:#1e3a5f; }
-  /* 輸入框 */
-  .stTextInput input, .stTextArea textarea{ border-radius:5px; background:#fdfbf6; border-color:#ddd0bd; }
-  hr{ border-color:#e2d8c6; }
-  /* 子標題墨藍、左側細線同報告風格 */
-  h2,h3{ color:#1e3a5f; font-weight:700; letter-spacing:.5px; border-left:4px solid #1e3a5f; padding-left:.5rem; }
+  html, body, [class*="css"] {{ font-family:Georgia,"Noto Serif TC","Microsoft JhengHei",serif; }}
+  .stApp {{ background:#f7f3ea; }}
+  .block-container {{ padding-top:1.9rem; max-width:1060px; }}
+  {report_mod.STYLE}
+  {batch_mod._BATCH_STYLE}
+  /* Streamlit 原生控件重皮：融入公文紙質感 */
+  [data-testid="stAlert"]{{ border-radius:6px; box-shadow:none; border:1px solid #e2d8c6; background:#fdfbf6; }}
+  [data-testid="stSidebar"]{{ background:#fdfbf6; border-right:1px solid #e2d8c6; }}
+  .stButton>button, .stDownloadButton>button{{ border-radius:5px; font-weight:600; border-color:#1e3a5f; color:#1e3a5f; }}
+  .stTextInput input, .stTextArea textarea{{ border-radius:5px; background:#fdfbf6; border-color:#ddd0bd; }}
+  hr{{ border-color:#e2d8c6; }}
 </style>
 """, unsafe_allow_html=True)
 
-
-def render_table(rows: list, highlight_first: bool = False) -> None:
-    """以純 HTML 呈現表格，避開 st.dataframe 的 pandas/pyarrow 轉換（曾在雲端 segfault）。"""
-    if not rows:
-        return
-    cols = list(rows[0].keys())
-    ths = "".join(
-        f"<th style='padding:8px 12px;text-align:left;background:#1e3a5f;color:#fff;"
-        f"font-weight:600;font-size:.82rem;letter-spacing:.4px;white-space:nowrap;"
-        f"border:1px solid #ddd0bd'>{_html.escape(str(c))}</th>" for c in cols)
-    trs = ""
-    for i, r in enumerate(rows):
-        bg = "background:#f5e3d0;font-weight:600" if (highlight_first and i == 0) else "background:#fdfbf6"
-        tds = "".join(
-            f"<td style='padding:8px 12px;border:1px solid #ddd0bd;{bg}'>"
-            f"{_html.escape('' if r.get(c) is None else str(r.get(c)))}</td>" for c in cols)
-        trs += f"<tr>{tds}</tr>"
-    st.markdown(
-        f"<div style='overflow-x:auto;border:1px solid #e2d8c6'>"
-        f"<table style='border-collapse:collapse;width:100%;font-size:0.9rem'>"
-        f"<thead><tr>{ths}</tr></thead><tbody>{trs}</tbody></table></div>",
-        unsafe_allow_html=True)
-
-
 # --------------------------------------------------------------------------- #
-# 主介面（純工具，不收集/不儲存任何查詢紀錄）
+# 標題：與報告同一套 .doc / .hd / .seal 樣式
 # --------------------------------------------------------------------------- #
 st.markdown("""
-<div class="kkb-hero">
-  <div>
-    <h1>科偵 IP 智慧溯源分析系統</h1>
-    <p>RDAP · BGP（LPM）· RPKI 交叉比對，自動產出發文偵辦建議</p>
+<div class="doc" style="margin-bottom:1.4rem">
+  <div class="hd">
+    <div>
+      <h1>科偵 IP 智慧溯源分析系統</h1>
+      <p class="meta" style="margin:.4rem 0 0">RDAP · BGP（LPM）· RPKI 交叉比對，自動產出發文偵辦建議 ｜ 不登入、不儲存任何查詢紀錄</p>
+    </div>
+    <div class="seal">科偵</div>
   </div>
-  <div class="seal">科偵</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -120,107 +82,9 @@ if mode == "🔍 單筆查詢" and ip_input:
             st.error(f"查詢失敗：{e}")
             st.stop()
 
-    rdap = result["rdap"]
-    bgp = result["bgp"]
-    rpki = result["rpki"]
-    a = result["assessment"]
+    # --- 查詢結果：與 HTML 報告同一份渲染邏輯 ---
+    st.markdown(report_mod.render_content(result), unsafe_allow_html=True)
 
-    # --- 儀表板 ---
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("📜 RDAP 產權證明（法定大房東）")
-        st.info(
-            f"**法定所有人：** {rdap.get('name')}　\n"
-            f"**所屬國家：** {rdap.get('country')}　\n"
-            f"**登記網段：** `{a.get('registered_block')}`　\n"
-            f"**Abuse 聯絡：** {rdap.get('abuse_email') or '—'}　\n"
-            f"**性質：** 法律上的 IP 持有者，下游不配合時的唯一司法施壓槓桿。"
-        )
-    with col2:
-        st.subheader("🪧 BGP 實體路由（最精準二房東）")
-        lpm = bgp.get("lpm")
-        if lpm:
-            st.success(
-                f"**實體控制者：** {lpm.get('holder')}　\n"
-                f"**宣告 ASN：** AS{lpm.get('asn')}　\n"
-                f"**最精準網段：** `{lpm.get('prefix')}`　\n"
-                f"**涵蓋 IP 數：** {lpm.get('num_addresses')}　\n"
-                f"**路由基準：** {bgp.get('timestamp')}"
-            )
-            status = rpki.get("status", "unknown")
-            badge = {"valid": "✅ VALID（已授權可信）",
-                     "invalid": "🚨 INVALID（疑似路由劫持）",
-                     "unknown": "➖ UNKNOWN（無 ROA，無法驗證）"}.get(status, status)
-            st.metric("RPKI ROA 驗證", badge)
-        else:
-            st.warning("未偵測到即時 BGP 路由宣告。")
-
-    # --- 重疊路由表 ---
-    st.divider()
-    st.subheader("📊 全球 BGP 路由重疊交叉比對（Longest Prefix Match）")
-    routes = bgp.get("routes", [])
-    if routes:
-        table = [{
-            "網段": r["prefix"], "Origin ASN": f"AS{r['asn']}",
-            "ASN 持有人": r.get("holder"), "涵蓋 IP 數": r["num_addresses"],
-            "研判": "🎯 最精準（實體流量去向）" if i == 0 else "包含關係（較大網段）",
-        } for i, r in enumerate(routes)]
-        render_table(table, highlight_first=True)
-    else:
-        st.warning("查無即時 BGP 宣告，請以 RDAP 產權登記為主。")
-
-    # --- 機房 / VPN / Proxy 屬性 ---
-    st.divider()
-    st.subheader("🛡️ 機房 / VPN / Proxy 屬性判定")
-    pinfo = result.get("proxy", {})
-    p_risk = pinfo.get("risk_level", "LOW")
-    c1, c2 = st.columns([1, 3])
-    with c1:
-        st.metric("綜合風險", {"HIGH": "🔴 高", "MEDIUM": "🟠 中", "LOW": "🟢 低"}.get(p_risk, p_risk))
-    with c2:
-        sigs = pinfo.get("signals", [])
-        if sigs:
-            st.write("**觸發訊號：**")
-            for s in sigs:
-                st.write(f"- {s}")
-        else:
-            st.write("各來源均未觸發機房/代理特徵。")
-        st.caption("來源：IP2Location.io（IP2Proxy）× ip-api.com × ASN/BGP 結構啟發式。"
-                   "商用黑名單對新租廉價 VPS 常漏判，LOW 不代表必非機房。")
-
-    # --- 定性與發文建議 ---
-    st.divider()
-    st.subheader("🚨 科技偵查發文調閱建議")
-    verdict = a["verdict"]
-    if verdict == "SUBLEASE":
-        st.error(
-            f"### ⚠️ 偵查定性：大房東／二房東分租現象\n"
-            f"嫌犯實質向二房東 **{a['bgp_holder']}** 租用伺服器作跳板，"
-            f"該網段法律上歸屬 **{a['legal_owner']}**。\n\n"
-            f"**建議調閱步驟（雙重發文）：**\n"
-            f"1. **函索大房東 {a['legal_owner']}**：出具案發時網段 `{a['bgp_prefix']}` "
-            f"租賃／分租證明（建立法定證據鏈）。\n"
-            f"2. **函索二房東 {a['bgp_holder']}（AS{a['bgp_asn']}）**："
-            f"該 IP 之 VPS 租用者個資、登入日誌、金流來源。"
-        )
-    elif verdict == "HIJACK_SUSPECT":
-        st.warning(
-            f"### 🚨 偵查定性：RPKI=Invalid，疑似路由劫持\n"
-            f"BGP 宣告與 ROA 不符，**證據力優先採 RDAP 產權**（{a['legal_owner']}）。\n\n"
-            f"1. 函索法定所有人查證是否曾授權(LOA) AS{a['bgp_asn']} 宣告該網段。\n"
-            f"2. 保全 RIS/looking-glass 路由時間軸作為劫持事證。"
-        )
-    elif verdict == "NO_BGP":
-        st.info(f"### ⚖️ 查無即時 BGP 宣告\n請以 RDAP 產權登記為主，直接函索 **{a['legal_owner']}**。")
-    else:
-        st.info(
-            f"### ⚖️ 偵查定性：產權與路由一致\n"
-            f"該 IP 由 **{a['legal_owner']}** 直接營運，未見分租。"
-            f"直接函索調閱使用者個資與連線紀錄。"
-        )
-
-    # --- 報告匯出 ---
-    st.divider()
     html_report = report_mod.build_html(result)
     st.download_button(
         "📄 下載 HTML 鑑識報告（公文附件）",
@@ -255,24 +119,9 @@ if mode == "📋 批次查詢":
 
     if st.session_state.get("batch_results"):
         results = st.session_state["batch_results"]
-        rows = batch_mod.to_rows(results)
 
-        # 摘要卡
-        n = len(rows)
-        n_sub = sum(1 for x in rows if x["定性"] == "SUBLEASE")
-        n_hij = sum(1 for x in rows if x["定性"] == "HIJACK_SUSPECT")
-        n_high = sum(1 for x in rows if x["機房風險"] == "HIGH")
-        n_err = sum(1 for x in rows if x["定性"] == "ERROR")
-        c = st.columns(5)
-        c[0].metric("總數", n)
-        c[1].metric("分租現象", n_sub)
-        c[2].metric("疑似劫持", n_hij)
-        c[3].metric("機房高風險", n_high)
-        c[4].metric("查詢失敗", n_err)
-
-        st.divider()
-        st.subheader("📊 批次彙整表")
-        render_table(rows)
+        # --- 批次結果：與 HTML 彙整報告同一份渲染邏輯 ---
+        st.markdown(batch_mod.render_content(results), unsafe_allow_html=True)
 
         col_a, col_b = st.columns(2)
         col_a.download_button(

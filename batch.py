@@ -92,14 +92,22 @@ _VERDICT_ZH = {
     "CONSISTENT": "產權路由一致", "NO_BGP": "查無BGP", "ERROR": "查詢失敗",
 }
 
+# 批次彙整專用的少量樣式（卡片/表格顏色與 report.STYLE 同一套司法公文風）
+_BATCH_STYLE = """
+  .doc .cards{display:flex;gap:12px;flex-wrap:wrap;margin:1rem 0}
+  .doc .card{background:#f2ece0;border:1px solid #e2d8c6;border-radius:6px;padding:.6rem 1rem;min-width:120px}
+  .doc .card b{font-size:1.5rem;display:block;color:#1e3a5f}
+  .doc .v-sub{background:#f5e3d0} .doc .v-hij{background:#f7ecd6} .doc .v-err{background:#eae4d7;color:#8a7a66}
+  .doc .r-h{color:#8a2a1f;font-weight:bold} .doc .r-m{color:#7a5a06;font-weight:bold} .doc .r-l{color:#2c5240}
+"""
 
-def to_html(results: list[dict]) -> str:
-    """批次彙整 HTML 報告（含統計摘要 + 明細表）。"""
+
+def render_content(results: list[dict]) -> str:
+    """回傳批次彙整結果的 <div class="doc">…</div> 片段（不含 <html>/<style>）。"""
     import html as _h
     import datetime as _dt
     rows = to_rows(results)
 
-    # 摘要統計
     n = len(rows)
     n_sub = sum(1 for r in rows if r["定性"] == "SUBLEASE")
     n_hij = sum(1 for r in rows if r["定性"] == "HIJACK_SUSPECT")
@@ -125,26 +133,7 @@ def to_html(results: list[dict]) -> str:
                f"<td class='{rcls}'>{esc(risk)}</td><td>{esc(r['備註'])}</td></tr>")
 
     now = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    return f"""<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8">
-<title>IP 批次溯源彙整報告</title><style>
- body{{font-family:"Georgia","Noto Serif TC","Microsoft JhengHei",serif;margin:2rem auto;max-width:1100px;color:#2b2b2b;background:#f7f3ea}}
- .doc{{background:#fdfbf6;border:1px solid #e2d8c6;padding:1.8rem 2rem;box-shadow:0 1px 4px rgba(0,0,0,.06)}}
- .hd{{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1e3a5f;padding-bottom:.6rem;margin-bottom:.4rem}}
- h1{{font-size:1.3rem;color:#1e3a5f;margin:0;letter-spacing:1px;font-weight:700}}
- .seal{{width:48px;height:48px;border:2px solid #b23a2e;color:#b23a2e;border-radius:6px;display:flex;
-   align-items:center;justify-content:center;font-weight:700;font-size:14px;transform:rotate(-8deg);flex-shrink:0}}
- .cards{{display:flex;gap:12px;flex-wrap:wrap;margin:1rem 0}}
- .card{{background:#f2ece0;border:1px solid #e2d8c6;border-radius:6px;padding:.6rem 1rem;min-width:120px}}
- .card b{{font-size:1.5rem;display:block;color:#1e3a5f}}
- table{{border-collapse:collapse;width:100%;font-size:.85rem}}
- th,td{{border:1px solid #ddd0bd;padding:.35rem .5rem;text-align:left}}
- th{{background:#1e3a5f;color:#fff;position:sticky;top:0;font-weight:600}}
- code{{background:#efe9db;padding:.05rem .3rem;border-radius:3px;font-family:Consolas,monospace}}
- .v-sub{{background:#f5e3d0}} .v-hij{{background:#f7ecd6}} .v-err{{background:#eae4d7;color:#8a7a66}}
- .r-h{{color:#8a2a1f;font-weight:bold}} .r-m{{color:#7a5a06;font-weight:bold}} .r-l{{color:#2c5240}}
- .meta{{color:#6b5d4f;font-size:.85rem}} footer{{margin-top:1.5rem;font-size:.8rem;color:#8a7a66;border-top:1px solid #e2d8c6;padding-top:.5rem}}
-</style></head><body>
-<div class="doc">
+    return f"""<div class="doc">
 <div class="hd">
  <div><h1>科偵 IP 批次溯源彙整報告</h1>
  <p class="meta" style="margin:.4rem 0 0">產製時間：{now}　｜　共 {n} 個 IP</p></div>
@@ -163,7 +152,19 @@ def to_html(results: list[dict]) -> str:
 {tr}
 </table>
 <footer>資料擷取自 ICANN RDAP bootstrap 與 RIPEstat（RIPE NCC）即時 API。BGP 具時效性，辦案請以案發時間點回溯為準。</footer>
-</div>
+</div>"""
+
+
+def to_html(results: list[dict]) -> str:
+    """批次彙整 HTML 報告（含統計摘要 + 明細表）。"""
+    import report as _report
+    return f"""<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8">
+<title>IP 批次溯源彙整報告</title><style>
+ body{{margin:2rem auto;max-width:1100px;background:#f7f3ea}}
+ {_report.STYLE}
+ {_BATCH_STYLE}
+</style></head><body class="doc-wrap">
+{render_content(results)}
 </body></html>"""
 
 

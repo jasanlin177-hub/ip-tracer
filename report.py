@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
-"""產出可列印/存證的 HTML 鑑識報告。"""
+"""
+產出鑑識報告內容（司法公文風）。
+
+`render_content()` 產出「單筆結果」的核心 HTML 片段（標題、定性、RDAP、BGP、機房、發文建議），
+`build_html()` 把它包成完整可下載的 HTML 檔。
+`ip_analyzer.py` 直接重用同一份 `render_content()` + `STYLE`，讓網頁上的查詢結果
+與下載的 HTML 報告永遠是同一套視覺，不會日後改一邊忘了改另一邊。
+"""
 from __future__ import annotations
 import html
 import datetime as _dt
@@ -15,12 +22,43 @@ _VERDICT_TEXT = {
                "RIS 收集器未見該 IP 的路由宣告，請以 RDAP 產權登記為主。"),
 }
 
+# 司法公文風共用樣式：ip_analyzer.py 與 build_html() 都注入這份，確保工具介面／報告視覺一致
+STYLE = """
+  .doc-wrap{font-family:"Georgia","Noto Serif TC","Microsoft JhengHei",serif;color:#2b2b2b;line-height:1.7}
+  .doc{background:#fdfbf6;border:1px solid #e2d8c6;padding:1.6rem 1.9rem;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:1.2rem}
+  .doc .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1e3a5f;padding-bottom:.6rem}
+  .doc h1{font-size:1.3rem;color:#1e3a5f;margin:0;letter-spacing:1px;font-weight:700}
+  .doc .seal{width:48px;height:48px;border:2px solid #b23a2e;color:#b23a2e;border-radius:6px;display:flex;
+    align-items:center;justify-content:center;font-weight:700;font-size:14px;transform:rotate(-8deg);flex-shrink:0}
+  .doc h2{font-size:1.04rem;color:#1e3a5f;margin:1.6rem 0 .6rem;border-left:4px solid #1e3a5f;padding-left:.6rem;letter-spacing:.5px}
+  .doc table{border-collapse:collapse;width:100%;margin:.5rem 0;font-size:.9rem}
+  .doc th,.doc td{border:1px solid #ddd0bd;padding:.4rem .6rem;text-align:left}
+  .doc th{background:#1e3a5f;color:#fff;font-weight:600}
+  .doc tr.lpm{background:#f5e3d0;font-weight:bold}
+  .doc code{background:#efe9db;padding:.1rem .35rem;border-radius:3px;font-family:Consolas,monospace}
+  .doc .meta{color:#6b5d4f;font-size:.83rem}
+  .doc .verdict{padding:.75rem 1.05rem;border-radius:4px;margin:.9rem 0;font-size:1rem;border-left:5px solid}
+  .doc .SUBLEASE{background:#f5e3d0;border-color:#b23a2e;color:#8a2a1f}
+  .doc .HIJACK_SUSPECT{background:#f7ecd6;border-color:#b8860b;color:#7a5a06}
+  .doc .CONSISTENT,.doc .NO_BGP{background:#e6ece3;border-color:#3a6b4f;color:#2c5240}
+  .doc .advice{background:#faf6ec;border:1px solid #e2d8c6;border-left:4px solid #1e3a5f;padding:.6rem 1rem;margin-top:.5rem}
+  .doc .advice.sublease{border-left-color:#b23a2e} .doc .advice.hijack{border-left-color:#b8860b}
+  .doc .kv td:first-child{width:32%;background:#f2ece0;font-weight:bold;color:#1e3a5f}
+  .doc .badge{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.83rem;font-weight:bold}
+  .doc .rpki-valid{background:#e6ece3;color:#2c5240} .doc .rpki-invalid{background:#f5e3d0;color:#8a2a1f}
+  .doc .rpki-unknown{background:#eae4d7;color:#5a5044}
+  .doc .risk-HIGH{background:#f5e3d0;color:#8a2a1f} .doc .risk-MEDIUM{background:#f7ecd6;color:#7a5a06}
+  .doc .risk-LOW{background:#e6ece3;color:#2c5240}
+  .doc footer{margin-top:1.5rem;font-size:.78rem;color:#8a7a66;border-top:1px solid #e2d8c6;padding-top:.5rem}
+"""
+
 
 def _esc(x) -> str:
     return html.escape(str(x)) if x is not None else "—"
 
 
-def build_html(result: dict) -> str:
+def render_content(result: dict) -> str:
+    """回傳單筆查詢結果的 <div class="doc">…</div> 片段（不含 <html>/<style>）。"""
     ip = result["ip"]
     rdap = result["rdap"]
     bgp = result["bgp"]
@@ -29,7 +67,6 @@ def build_html(result: dict) -> str:
     verdict = a["verdict"]
     v_title, v_desc = _VERDICT_TEXT.get(verdict, ("未定性", ""))
 
-    # 路由重疊表
     rows = ""
     for i, r in enumerate(bgp.get("routes", [])):
         tag = "🎯 最精準（實體流量去向）" if i == 0 else "包含關係（較大網段）"
@@ -40,7 +77,6 @@ def build_html(result: dict) -> str:
     if not rows:
         rows = "<tr><td colspan='5'>查無即時 BGP 宣告</td></tr>"
 
-    # 發文建議
     if verdict == "SUBLEASE":
         advice = f"""
         <div class="advice sublease">
@@ -71,7 +107,6 @@ def build_html(result: dict) -> str:
           {("Abuse 聯絡：<code>"+_esc(a['abuse_email'])+"</code>") if a.get('abuse_email') else ""}</p>
         </div>"""
 
-    # 機房 / VPN / Proxy 區塊
     pinfo = result.get("proxy") or {}
     p_risk = pinfo.get("risk_level", "LOW")
     p_signals = pinfo.get("signals", [])
@@ -89,38 +124,7 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
 """
 
     now = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    return f"""<!DOCTYPE html>
-<html lang="zh-Hant"><head><meta charset="utf-8">
-<title>IP 溯源鑑識報告 {_esc(ip)}</title>
-<style>
-  body{{font-family:"Georgia","Noto Serif TC","Microsoft JhengHei",serif;margin:2.5rem auto;max-width:900px;color:#2b2b2b;line-height:1.7;background:#f7f3ea}}
-  .doc{{background:#fdfbf6;border:1px solid #e2d8c6;padding:2rem 2.4rem;box-shadow:0 1px 4px rgba(0,0,0,.06)}}
-  .hd{{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1e3a5f;padding-bottom:.6rem}}
-  h1{{font-size:1.4rem;color:#1e3a5f;margin:0;letter-spacing:1px;font-weight:700}}
-  .seal{{width:52px;height:52px;border:2px solid #b23a2e;color:#b23a2e;border-radius:6px;display:flex;
-    align-items:center;justify-content:center;font-weight:700;font-size:15px;transform:rotate(-8deg);flex-shrink:0}}
-  h2{{font-size:1.08rem;color:#1e3a5f;margin-top:1.8rem;border-left:4px solid #1e3a5f;padding-left:.6rem;letter-spacing:.5px}}
-  table{{border-collapse:collapse;width:100%;margin:.6rem 0;font-size:.92rem}}
-  th,td{{border:1px solid #ddd0bd;padding:.42rem .6rem;text-align:left}}
-  th{{background:#1e3a5f;color:#fff;font-weight:600}}
-  tr.lpm{{background:#f5e3d0;font-weight:bold}}
-  code{{background:#efe9db;padding:.1rem .35rem;border-radius:3px;font-family:Consolas,monospace}}
-  .meta{{color:#6b5d4f;font-size:.85rem}}
-  .verdict{{padding:.8rem 1.1rem;border-radius:4px;margin:1rem 0;font-size:1.05rem;border-left:5px solid}}
-  .SUBLEASE{{background:#f5e3d0;border-color:#b23a2e;color:#8a2a1f}}
-  .HIJACK_SUSPECT{{background:#f7ecd6;border-color:#b8860b;color:#7a5a06}}
-  .CONSISTENT,.NO_BGP{{background:#e6ece3;border-color:#3a6b4f;color:#2c5240}}
-  .advice{{background:#faf6ec;border:1px solid #e2d8c6;border-left:4px solid #1e3a5f;padding:.6rem 1rem;margin-top:.6rem}}
-  .advice.sublease{{border-left-color:#b23a2e}} .advice.hijack{{border-left-color:#b8860b}}
-  .kv td:first-child{{width:32%;background:#f2ece0;font-weight:bold;color:#1e3a5f}}
-  .badge{{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.85rem;font-weight:bold}}
-  .rpki-valid{{background:#e6ece3;color:#2c5240}} .rpki-invalid{{background:#f5e3d0;color:#8a2a1f}}
-  .rpki-unknown{{background:#eae4d7;color:#5a5044}}
-  .risk-HIGH{{background:#f5e3d0;color:#8a2a1f}} .risk-MEDIUM{{background:#f7ecd6;color:#7a5a06}}
-  .risk-LOW{{background:#e6ece3;color:#2c5240}}
-  footer{{margin-top:2rem;font-size:.8rem;color:#8a7a66;border-top:1px solid #e2d8c6;padding-top:.6rem}}
-</style></head><body>
-<div class="doc">
+    return f"""<div class="doc">
 <div class="hd">
   <div><h1>科偵 IP 智慧溯源鑑識報告</h1>
   <p class="meta" style="margin:.4rem 0 0">涉案 IP：<b>{_esc(ip)}</b>　｜　產製時間：{now}　｜　路由基準時間：{_esc(bgp.get('timestamp'))}</p></div>
@@ -155,5 +159,17 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
 本報告由「科偵 IP 智慧溯源分析系統」自動產製，資料擷取自 ICANN RDAP bootstrap 與 RIPEstat（RIPE NCC）即時 API。
 BGP 路由狀態具時效性，正式辦案請以案發時間點之路由回溯資料為準，並保全原始 API 回應。
 </footer>
-</div>
+</div>"""
+
+
+def build_html(result: dict) -> str:
+    ip = result["ip"]
+    return f"""<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<title>IP 溯源鑑識報告 {_esc(ip)}</title>
+<style>
+  body{{margin:2.5rem auto;max-width:900px;background:#f7f3ea}}
+  {STYLE}
+</style></head><body class="doc-wrap">
+{render_content(result)}
 </body></html>"""
