@@ -127,21 +127,29 @@ def to_html(results: list[dict]) -> str:
     now = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return f"""<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8">
 <title>IP 批次溯源彙整報告</title><style>
- body{{font-family:"Microsoft JhengHei","Noto Sans TC",sans-serif;margin:2rem auto;max-width:1100px;color:#222}}
- h1{{font-size:1.3rem;border-bottom:3px solid #1a3c6e;padding-bottom:.4rem}}
+ body{{font-family:"Georgia","Noto Serif TC","Microsoft JhengHei",serif;margin:2rem auto;max-width:1100px;color:#2b2b2b;background:#f7f3ea}}
+ .doc{{background:#fdfbf6;border:1px solid #e2d8c6;padding:1.8rem 2rem;box-shadow:0 1px 4px rgba(0,0,0,.06)}}
+ .hd{{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1e3a5f;padding-bottom:.6rem;margin-bottom:.4rem}}
+ h1{{font-size:1.3rem;color:#1e3a5f;margin:0;letter-spacing:1px;font-weight:700}}
+ .seal{{width:48px;height:48px;border:2px solid #b23a2e;color:#b23a2e;border-radius:6px;display:flex;
+   align-items:center;justify-content:center;font-weight:700;font-size:14px;transform:rotate(-8deg);flex-shrink:0}}
  .cards{{display:flex;gap:12px;flex-wrap:wrap;margin:1rem 0}}
- .card{{background:#f2f5fa;border-radius:8px;padding:.6rem 1rem;min-width:120px}}
- .card b{{font-size:1.5rem;display:block;color:#1a3c6e}}
+ .card{{background:#f2ece0;border:1px solid #e2d8c6;border-radius:6px;padding:.6rem 1rem;min-width:120px}}
+ .card b{{font-size:1.5rem;display:block;color:#1e3a5f}}
  table{{border-collapse:collapse;width:100%;font-size:.85rem}}
- th,td{{border:1px solid #ccc;padding:.35rem .5rem;text-align:left}}
- th{{background:#1a3c6e;color:#fff;position:sticky;top:0}}
- code{{background:#eef;padding:.05rem .3rem;border-radius:3px}}
- .v-sub{{background:#fdecec}} .v-hij{{background:#fff3cd}} .v-err{{background:#eee;color:#888}}
- .r-h{{color:#a32d2d;font-weight:bold}} .r-m{{color:#854f0b;font-weight:bold}} .r-l{{color:#0f5132}}
- .meta{{color:#666;font-size:.85rem}} footer{{margin-top:1.5rem;font-size:.8rem;color:#888;border-top:1px solid #ddd;padding-top:.5rem}}
+ th,td{{border:1px solid #ddd0bd;padding:.35rem .5rem;text-align:left}}
+ th{{background:#1e3a5f;color:#fff;position:sticky;top:0;font-weight:600}}
+ code{{background:#efe9db;padding:.05rem .3rem;border-radius:3px;font-family:Consolas,monospace}}
+ .v-sub{{background:#f5e3d0}} .v-hij{{background:#f7ecd6}} .v-err{{background:#eae4d7;color:#8a7a66}}
+ .r-h{{color:#8a2a1f;font-weight:bold}} .r-m{{color:#7a5a06;font-weight:bold}} .r-l{{color:#2c5240}}
+ .meta{{color:#6b5d4f;font-size:.85rem}} footer{{margin-top:1.5rem;font-size:.8rem;color:#8a7a66;border-top:1px solid #e2d8c6;padding-top:.5rem}}
 </style></head><body>
-<h1>🔍 科偵 IP 批次溯源彙整報告</h1>
-<p class="meta">產製時間：{now}　｜　共 {n} 個 IP</p>
+<div class="doc">
+<div class="hd">
+ <div><h1>科偵 IP 批次溯源彙整報告</h1>
+ <p class="meta" style="margin:.4rem 0 0">產製時間：{now}　｜　共 {n} 個 IP</p></div>
+ <div class="seal">科偵</div>
+</div>
 <div class="cards">
  <div class="card"><b>{n}</b>總數</div>
  <div class="card"><b>{n_sub}</b>分租現象</div>
@@ -155,6 +163,7 @@ def to_html(results: list[dict]) -> str:
 {tr}
 </table>
 <footer>資料擷取自 ICANN RDAP bootstrap 與 RIPEstat（RIPE NCC）即時 API。BGP 具時效性，辦案請以案發時間點回溯為準。</footer>
+</div>
 </body></html>"""
 
 

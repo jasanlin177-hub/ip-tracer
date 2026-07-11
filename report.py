@@ -93,30 +93,39 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <title>IP 溯源鑑識報告 {_esc(ip)}</title>
 <style>
-  body{{font-family:"Microsoft JhengHei","Noto Sans TC",sans-serif;margin:2.5rem auto;max-width:900px;color:#222;line-height:1.6}}
-  h1{{font-size:1.4rem;border-bottom:3px solid #1a3c6e;padding-bottom:.4rem}}
-  h2{{font-size:1.1rem;color:#1a3c6e;margin-top:1.8rem;border-left:5px solid #1a3c6e;padding-left:.5rem}}
+  body{{font-family:"Georgia","Noto Serif TC","Microsoft JhengHei",serif;margin:2.5rem auto;max-width:900px;color:#2b2b2b;line-height:1.7;background:#f7f3ea}}
+  .doc{{background:#fdfbf6;border:1px solid #e2d8c6;padding:2rem 2.4rem;box-shadow:0 1px 4px rgba(0,0,0,.06)}}
+  .hd{{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1e3a5f;padding-bottom:.6rem}}
+  h1{{font-size:1.4rem;color:#1e3a5f;margin:0;letter-spacing:1px;font-weight:700}}
+  .seal{{width:52px;height:52px;border:2px solid #b23a2e;color:#b23a2e;border-radius:6px;display:flex;
+    align-items:center;justify-content:center;font-weight:700;font-size:15px;transform:rotate(-8deg);flex-shrink:0}}
+  h2{{font-size:1.08rem;color:#1e3a5f;margin-top:1.8rem;border-left:4px solid #1e3a5f;padding-left:.6rem;letter-spacing:.5px}}
   table{{border-collapse:collapse;width:100%;margin:.6rem 0;font-size:.92rem}}
-  th,td{{border:1px solid #ccc;padding:.4rem .6rem;text-align:left}}
-  th{{background:#1a3c6e;color:#fff}}
-  tr.lpm{{background:#fff3cd;font-weight:bold}}
-  code{{background:#eef;padding:.1rem .3rem;border-radius:3px}}
-  .meta{{color:#666;font-size:.85rem}}
-  .verdict{{padding:.8rem 1rem;border-radius:6px;margin:1rem 0;font-size:1.05rem}}
-  .SUBLEASE{{background:#f8d7da;border:1px solid #dc3545}}
-  .HIJACK_SUSPECT{{background:#fff3cd;border:1px solid #ffc107}}
-  .CONSISTENT,.NO_BGP{{background:#d1e7dd;border:1px solid #198754}}
-  .advice{{background:#f6f8fa;border:1px solid #ddd;border-radius:6px;padding:.6rem 1rem;margin-top:.6rem}}
-  .kv td:first-child{{width:32%;background:#f2f5fa;font-weight:bold}}
+  th,td{{border:1px solid #ddd0bd;padding:.42rem .6rem;text-align:left}}
+  th{{background:#1e3a5f;color:#fff;font-weight:600}}
+  tr.lpm{{background:#f5e3d0;font-weight:bold}}
+  code{{background:#efe9db;padding:.1rem .35rem;border-radius:3px;font-family:Consolas,monospace}}
+  .meta{{color:#6b5d4f;font-size:.85rem}}
+  .verdict{{padding:.8rem 1.1rem;border-radius:4px;margin:1rem 0;font-size:1.05rem;border-left:5px solid}}
+  .SUBLEASE{{background:#f5e3d0;border-color:#b23a2e;color:#8a2a1f}}
+  .HIJACK_SUSPECT{{background:#f7ecd6;border-color:#b8860b;color:#7a5a06}}
+  .CONSISTENT,.NO_BGP{{background:#e6ece3;border-color:#3a6b4f;color:#2c5240}}
+  .advice{{background:#faf6ec;border:1px solid #e2d8c6;border-left:4px solid #1e3a5f;padding:.6rem 1rem;margin-top:.6rem}}
+  .advice.sublease{{border-left-color:#b23a2e}} .advice.hijack{{border-left-color:#b8860b}}
+  .kv td:first-child{{width:32%;background:#f2ece0;font-weight:bold;color:#1e3a5f}}
   .badge{{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.85rem;font-weight:bold}}
-  .rpki-valid{{background:#d1e7dd;color:#0f5132}} .rpki-invalid{{background:#f8d7da;color:#842029}}
-  .rpki-unknown{{background:#e2e3e5;color:#41464b}}
-  .risk-HIGH{{background:#f8d7da;color:#842029}} .risk-MEDIUM{{background:#fff3cd;color:#664d03}}
-  .risk-LOW{{background:#d1e7dd;color:#0f5132}}
-  footer{{margin-top:2rem;font-size:.8rem;color:#888;border-top:1px solid #ddd;padding-top:.6rem}}
+  .rpki-valid{{background:#e6ece3;color:#2c5240}} .rpki-invalid{{background:#f5e3d0;color:#8a2a1f}}
+  .rpki-unknown{{background:#eae4d7;color:#5a5044}}
+  .risk-HIGH{{background:#f5e3d0;color:#8a2a1f}} .risk-MEDIUM{{background:#f7ecd6;color:#7a5a06}}
+  .risk-LOW{{background:#e6ece3;color:#2c5240}}
+  footer{{margin-top:2rem;font-size:.8rem;color:#8a7a66;border-top:1px solid #e2d8c6;padding-top:.6rem}}
 </style></head><body>
-<h1>🔍 科偵 IP 智慧溯源鑑識報告</h1>
-<p class="meta">涉案 IP：<b>{_esc(ip)}</b>　｜　產製時間：{now}　｜　路由基準時間：{_esc(bgp.get('timestamp'))}</p>
+<div class="doc">
+<div class="hd">
+  <div><h1>科偵 IP 智慧溯源鑑識報告</h1>
+  <p class="meta" style="margin:.4rem 0 0">涉案 IP：<b>{_esc(ip)}</b>　｜　產製時間：{now}　｜　路由基準時間：{_esc(bgp.get('timestamp'))}</p></div>
+  <div class="seal">科偵</div>
+</div>
 
 <div class="verdict {verdict}"><b>偵查定性：{v_title}</b><br>{v_desc}</div>
 
@@ -146,4 +155,5 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
 本報告由「科偵 IP 智慧溯源分析系統」自動產製，資料擷取自 ICANN RDAP bootstrap 與 RIPEstat（RIPE NCC）即時 API。
 BGP 路由狀態具時效性，正式辦案請以案發時間點之路由回溯資料為準，並保全原始 API 回應。
 </footer>
+</div>
 </body></html>"""
