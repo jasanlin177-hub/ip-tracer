@@ -20,7 +20,7 @@ def _esc(x) -> str:
     return html.escape(str(x)) if x is not None else "—"
 
 
-def build_html(result: dict, querier: str = "", case_no: str = "") -> str:
+def build_html(result: dict) -> str:
     ip = result["ip"]
     rdap = result["rdap"]
     bgp = result["bgp"]
@@ -116,8 +116,7 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
   footer{{margin-top:2rem;font-size:.8rem;color:#888;border-top:1px solid #ddd;padding-top:.6rem}}
 </style></head><body>
 <h1>🔍 科偵 IP 智慧溯源鑑識報告</h1>
-<p class="meta">涉案 IP：<b>{_esc(ip)}</b>　｜　案號：{_esc(case_no) or "—"}　｜　查詢人：{_esc(querier) or "—"}<br>
-產製時間：{now}　｜　路由基準時間：{_esc(bgp.get('timestamp'))}</p>
+<p class="meta">涉案 IP：<b>{_esc(ip)}</b>　｜　產製時間：{now}　｜　路由基準時間：{_esc(bgp.get('timestamp'))}</p>
 
 <div class="verdict {verdict}"><b>偵查定性：{v_title}</b><br>{v_desc}</div>
 

@@ -93,7 +93,7 @@ _VERDICT_ZH = {
 }
 
 
-def to_html(results: list[dict], querier: str = "", case_no: str = "") -> str:
+def to_html(results: list[dict]) -> str:
     """批次彙整 HTML 報告（含統計摘要 + 明細表）。"""
     import html as _h
     import datetime as _dt
@@ -141,7 +141,7 @@ def to_html(results: list[dict], querier: str = "", case_no: str = "") -> str:
  .meta{{color:#666;font-size:.85rem}} footer{{margin-top:1.5rem;font-size:.8rem;color:#888;border-top:1px solid #ddd;padding-top:.5rem}}
 </style></head><body>
 <h1>🔍 科偵 IP 批次溯源彙整報告</h1>
-<p class="meta">案號：{esc(case_no)}　｜　查詢人：{esc(querier)}　｜　產製時間：{now}　｜　共 {n} 個 IP</p>
+<p class="meta">產製時間：{now}　｜　共 {n} 個 IP</p>
 <div class="cards">
  <div class="card"><b>{n}</b>總數</div>
  <div class="card"><b>{n_sub}</b>分租現象</div>

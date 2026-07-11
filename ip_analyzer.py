@@ -14,6 +14,39 @@ import report as report_mod
 
 st.set_page_config(page_title="科偵 IP 智慧溯源分析系統", page_icon="⚙️", layout="wide")
 
+# --------------------------------------------------------------------------- #
+# 全域樣式（Tailwind 風：slate 底、白色圓角卡片、藍色 accent、柔和陰影）
+# --------------------------------------------------------------------------- #
+st.markdown("""
+<style>
+  .stApp { background:#f1f5f9; }
+  .block-container { padding-top:1.6rem; max-width:1100px; }
+  /* 漸層 hero 橫幅 */
+  .kkb-hero{
+    background:linear-gradient(to bottom right,#1e40af,#1e3a8a,#0f172a);
+    border-radius:14px; padding:1.4rem 1.7rem; margin-bottom:1.3rem;
+    box-shadow:0 10px 25px rgba(15,23,42,.25); border:1px solid rgba(59,130,246,.35);
+  }
+  .kkb-hero h1{ color:#fff; font-size:1.55rem; font-weight:700; margin:0; letter-spacing:.5px; }
+  .kkb-hero p{ color:#cbd5e1; font-size:.95rem; margin:.4rem 0 0; }
+  /* 提示框 → 白卡片圓角＋陰影 */
+  [data-testid="stAlert"]{ border-radius:12px; box-shadow:0 4px 10px rgba(15,23,42,.06); border:1px solid #e5e7eb; }
+  /* 指標卡 → 白卡片 */
+  [data-testid="stMetric"]{ background:#fff; border:1px solid #eef2f7; border-radius:12px;
+    padding:.9rem 1rem; box-shadow:0 4px 10px rgba(15,23,42,.05); }
+  /* 側邊欄白底＋右側細線 */
+  [data-testid="stSidebar"]{ background:#fff; border-right:1px solid #e5e7eb; }
+  /* 按鈕圓角 */
+  .stButton>button, .stDownloadButton>button{ border-radius:9px; font-weight:600; }
+  /* 輸入框圓角 */
+  .stTextInput input, .stTextArea textarea{ border-radius:9px; }
+  /* 分隔線淡一點 */
+  hr{ border-color:#e2e8f0; }
+  /* 子標題深藍 */
+  h2,h3{ color:#1e3a8a; }
+</style>
+""", unsafe_allow_html=True)
+
 
 def render_table(rows: list, highlight_first: bool = False) -> None:
     """以純 HTML 呈現表格，避開 st.dataframe 的 pandas/pyarrow 轉換（曾在雲端 segfault）。"""
@@ -21,17 +54,19 @@ def render_table(rows: list, highlight_first: bool = False) -> None:
         return
     cols = list(rows[0].keys())
     ths = "".join(
-        f"<th style='padding:6px 10px;text-align:left;background:#1a3c6e;color:#fff;"
+        f"<th style='padding:8px 12px;text-align:left;background:#2563eb;color:#fff;"
         f"font-weight:600;white-space:nowrap'>{_html.escape(str(c))}</th>" for c in cols)
     trs = ""
     for i, r in enumerate(rows):
-        bg = "background:#fff3cd;font-weight:600" if (highlight_first and i == 0) else ""
+        bg = "background:#fef9c3;font-weight:600" if (highlight_first and i == 0) else \
+             ("background:#f8fafc" if i % 2 else "background:#fff")
         tds = "".join(
-            f"<td style='padding:6px 10px;border-bottom:1px solid #e3e3e3;{bg}'>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #eef2f7;{bg}'>"
             f"{_html.escape('' if r.get(c) is None else str(r.get(c)))}</td>" for c in cols)
         trs += f"<tr>{tds}</tr>"
     st.markdown(
-        f"<div style='overflow-x:auto'><table style='border-collapse:collapse;width:100%;"
+        f"<div style='overflow-x:auto;border-radius:12px;box-shadow:0 4px 10px rgba(15,23,42,.06);"
+        f"border:1px solid #e5e7eb'><table style='border-collapse:collapse;width:100%;"
         f"font-size:0.9rem'><thead><tr>{ths}</tr></thead><tbody>{trs}</tbody></table></div>",
         unsafe_allow_html=True)
 
@@ -39,8 +74,12 @@ def render_table(rows: list, highlight_first: bool = False) -> None:
 # --------------------------------------------------------------------------- #
 # 主介面（純工具，不收集/不儲存任何查詢紀錄）
 # --------------------------------------------------------------------------- #
-st.title("⚙️ 科偵 IP 智慧溯源分析系統")
-st.caption("RDAP（法定產權）× BGP（實體路由 LPM）× RPKI（劫持偵測）交叉比對，並自動產出發文偵辦建議")
+st.markdown("""
+<div class="kkb-hero">
+  <h1>⚙️ 科偵 IP 智慧溯源分析系統</h1>
+  <p>RDAP（法定產權）× BGP（實體路由 LPM）× RPKI（劫持偵測）交叉比對，並自動產出發文偵辦建議</p>
+</div>
+""", unsafe_allow_html=True)
 
 with st.sidebar:
     st.header("查詢設定")

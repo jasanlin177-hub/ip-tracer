@@ -103,6 +103,26 @@ git push</code></pre>
     但這與辦案機密無關——因為工具本來就不儲存任何資料。
   </div>
 
+  <h2>⚠️ 疑難排解：部署後一直閃退（Segmentation fault）</h2>
+  <div class="note">
+    <b>症狀：</b>App 有跑起來（log 出現 <code>Uvicorn server started</code>），但查詢或切換選項後過幾秒就崩潰，
+    log 結尾出現 <code>Segmentation fault</code> 並不斷重啟。
+  </div>
+  <p><b>原因：</b>Streamlit 的表格元件 <code>st.dataframe</code> 在顯示資料時會把資料轉成 Arrow 格式，
+  這條路徑經過原生套件 <code>pandas</code> / <code>pyarrow</code>。當 Streamlit Cloud 自動裝到
+  <b>最新的 pandas 3.0</b> 時，這個轉換會踩到記憶體錯誤而整個崩掉（實測 Python 3.11 / 3.14 都會）。
+  <b>不是程式邏輯壞，是底層套件版本組合不穩。</b></p>
+  <p><b>本專案已內建的解法（若你 fork 或照抄，記得保留）：</b></p>
+  <table>
+    <tr><th>做法</th><th>檔案</th></tr>
+    <tr><td>① 鎖 pandas 2.x，避開高風險的 3.0</td><td><code>requirements.txt</code> 加一行 <code>pandas&lt;3</code></td></tr>
+    <tr><td>② 表格改用純 HTML 顯示，完全不經 pandas/pyarrow</td><td><code>ip_analyzer.py</code> 的 <code>render_table()</code>（用 <code>st.markdown</code> 畫表，取代 <code>st.dataframe</code>）</td></tr>
+  </table>
+  <div class="note">
+    <b>💡 給未來的你：</b>之後若在 Streamlit Cloud 又遇到莫名 segfault，第一個先懷疑
+    <b>st.dataframe / st.table（Arrow 轉換）</b>與 <b>pandas 版本沒鎖</b>。把表格改純 HTML、requirements 鎖 <code>pandas&lt;3</code>，通常就解了。
+  </div>
+
 </main>
 <footer>
   科偵 IP 智慧溯源分析系統　｜　資料來源：ICANN RDAP、RIPEstat（RIPE NCC）、ip-api、IP2Location.io（皆為公開查詢服務）
