@@ -1,2 +1,4 @@
 streamlit>=1.30
 requests>=2.31
+# 鎖 pandas 2.x：pandas 3.0 + pyarrow 在 Streamlit Cloud 顯示表格時會 segfault
+pandas<3

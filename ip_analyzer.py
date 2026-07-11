@@ -3,6 +3,7 @@
 科偵 IP 智慧溯源分析系統 — Streamlit 主程式
 執行： streamlit run ip_analyzer.py
 """
+import html as _html
 import datetime as dt
 
 import streamlit as st
@@ -12,6 +13,28 @@ import batch as batch_mod
 import report as report_mod
 
 st.set_page_config(page_title="科偵 IP 智慧溯源分析系統", page_icon="⚙️", layout="wide")
+
+
+def render_table(rows: list, highlight_first: bool = False) -> None:
+    """以純 HTML 呈現表格，避開 st.dataframe 的 pandas/pyarrow 轉換（曾在雲端 segfault）。"""
+    if not rows:
+        return
+    cols = list(rows[0].keys())
+    ths = "".join(
+        f"<th style='padding:6px 10px;text-align:left;background:#1a3c6e;color:#fff;"
+        f"font-weight:600;white-space:nowrap'>{_html.escape(str(c))}</th>" for c in cols)
+    trs = ""
+    for i, r in enumerate(rows):
+        bg = "background:#fff3cd;font-weight:600" if (highlight_first and i == 0) else ""
+        tds = "".join(
+            f"<td style='padding:6px 10px;border-bottom:1px solid #e3e3e3;{bg}'>"
+            f"{_html.escape('' if r.get(c) is None else str(r.get(c)))}</td>" for c in cols)
+        trs += f"<tr>{tds}</tr>"
+    st.markdown(
+        f"<div style='overflow-x:auto'><table style='border-collapse:collapse;width:100%;"
+        f"font-size:0.9rem'><thead><tr>{ths}</tr></thead><tbody>{trs}</tbody></table></div>",
+        unsafe_allow_html=True)
+
 
 # --------------------------------------------------------------------------- #
 # 主介面（純工具，不收集/不儲存任何查詢紀錄）
@@ -96,7 +119,7 @@ if mode == "🔍 單筆查詢" and ip_input:
             "ASN 持有人": r.get("holder"), "涵蓋 IP 數": r["num_addresses"],
             "研判": "🎯 最精準（實體流量去向）" if i == 0 else "包含關係（較大網段）",
         } for i, r in enumerate(routes)]
-        st.dataframe(table, use_container_width=True, hide_index=True)
+        render_table(table, highlight_first=True)
     else:
         st.warning("查無即時 BGP 宣告，請以 RDAP 產權登記為主。")
 
@@ -203,7 +226,7 @@ if mode == "📋 批次查詢":
 
         st.divider()
         st.subheader("📊 批次彙整表")
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+        render_table(rows)
 
         col_a, col_b = st.columns(2)
         col_a.download_button(
