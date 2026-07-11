@@ -89,7 +89,7 @@ if mode == "🔍 單筆查詢" and ip_input:
     st.download_button(
         "📄 下載 HTML 鑑識報告（公文附件）",
         data=html_report.encode("utf-8"),
-        file_name=f"IP溯源報告_{ip}_{dt.datetime.now():%Y%m%d_%H%M}.html",
+        file_name=f"IP溯源報告_{ip}_{tracer.now_tw():%Y%m%d_%H%M}.html",
         mime="text/html",
     )
     with st.expander("🔧 原始 API 回應（存證用）"):
@@ -127,12 +127,12 @@ if mode == "📋 批次查詢":
         col_a.download_button(
             "📄 下載 HTML 彙整報告",
             data=batch_mod.to_html(results).encode("utf-8"),
-            file_name=f"IP批次溯源_{dt.datetime.now():%Y%m%d_%H%M}.html",
+            file_name=f"IP批次溯源_{tracer.now_tw():%Y%m%d_%H%M}.html",
             mime="text/html",
         )
         col_b.download_button(
             "📥 下載 CSV",
             data=batch_mod.to_csv(results).encode("utf-8-sig"),  # BOM 讓 Excel 正確顯示中文
-            file_name=f"IP批次溯源_{dt.datetime.now():%Y%m%d_%H%M}.csv",
+            file_name=f"IP批次溯源_{tracer.now_tw():%Y%m%d_%H%M}.csv",
             mime="text/csv",
         )

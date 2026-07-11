@@ -19,6 +19,13 @@ from typing import Optional
 
 import requests
 
+TW_TZ = _dt.timezone(_dt.timedelta(hours=8))
+
+
+def now_tw() -> _dt.datetime:
+    """伺服器（Streamlit Cloud）跑在 UTC，這裡統一轉台灣時間（UTC+8）供顯示用。"""
+    return _dt.datetime.now(TW_TZ)
+
 import proxy as _proxy
 
 RIPESTAT = "https://stat.ripe.net/data"
@@ -302,7 +309,7 @@ def analyze(ip: str, timestamp: Optional[str] = None,
 
     return {
         "ip": ip,
-        "queried_at": _dt.datetime.now().isoformat(timespec="seconds"),
+        "queried_at": now_tw().isoformat(timespec="seconds"),
         "case_timestamp": timestamp,
         "rdap": rdap,
         "bgp": bgp,

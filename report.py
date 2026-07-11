@@ -9,7 +9,8 @@
 """
 from __future__ import annotations
 import html
-import datetime as _dt
+
+import tracer as _tracer
 
 _VERDICT_TEXT = {
     "SUBLEASE": ("發現「大房東／二房東」分租現象",
@@ -129,7 +130,7 @@ f"""<div class="advice consistent">
 LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
 """
 
-    now = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = _tracer.now_tw().strftime("%Y-%m-%d %H:%M:%S") + "（UTC+8）"
     return f"""<div class="doc">
 <div class="hd">
   <div><h1>科偵 IP 智慧溯源鑑識報告</h1>

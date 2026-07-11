@@ -105,7 +105,6 @@ _BATCH_STYLE = """
 def render_content(results: list[dict]) -> str:
     """回傳批次彙整結果的 <div class="doc">…</div> 片段（不含 <html>/<style>）。"""
     import html as _h
-    import datetime as _dt
     rows = to_rows(results)
 
     n = len(rows)
@@ -132,7 +131,7 @@ def render_content(results: list[dict]) -> str:
                f"<td>{esc(r['RPKI'])}</td>"
                f"<td class='{rcls}'>{esc(risk)}</td><td>{esc(r['備註'])}</td></tr>")
 
-    now = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = tracer.now_tw().strftime("%Y-%m-%d %H:%M:%S") + "（UTC+8）"
     return f"""<div class="doc">
 <div class="hd">
  <div><h1>科偵 IP 批次溯源彙整報告</h1>
