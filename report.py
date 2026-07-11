@@ -78,34 +78,36 @@ def render_content(result: dict) -> str:
         rows = "<tr><td colspan='5'>查無即時 BGP 宣告</td></tr>"
 
     if verdict == "SUBLEASE":
-        advice = f"""
-        <div class="advice sublease">
-          <p><b>建議調閱步驟（雙重發文）：</b></p>
-          <ol>
-            <li><b>函索大房東 — {_esc(a['legal_owner'])}</b>（{_esc(a.get('legal_country'))}）：
-                請出具案發時間點該網段 <code>{_esc(a['bgp_prefix'])}</code> 租賃／分租給下游機房之
-                <b>正式合約與分租證明文件</b>，建立法定證據鏈並實錘二房東管轄權。
-                {("Abuse 聯絡：<code>"+_esc(a['abuse_email'])+"</code>") if a.get('abuse_email') else ""}</li>
-            <li><b>函索二房東 — {_esc(a['bgp_holder'])}</b>（AS{_esc(a['bgp_asn'])}）：
-                同步函索該 IP 於案發時間點之 <b>VPS 租用者個資、登入日誌(Log)、金流來源</b>。</li>
-          </ol>
-        </div>"""
+        abuse_line = (f"Abuse 聯絡：<code>{_esc(a['abuse_email'])}</code>") if a.get('abuse_email') else ""
+        advice = (
+f"""<div class="advice sublease">
+<p><b>建議調閱步驟（雙重發文）：</b></p>
+<ol>
+<li><b>函索大房東 — {_esc(a['legal_owner'])}</b>（{_esc(a.get('legal_country'))}）：
+請出具案發時間點該網段 <code>{_esc(a['bgp_prefix'])}</code> 租賃／分租給下游機房之
+<b>正式合約與分租證明文件</b>，建立法定證據鏈並實錘二房東管轄權。
+{abuse_line}</li>
+<li><b>函索二房東 — {_esc(a['bgp_holder'])}</b>（AS{_esc(a['bgp_asn'])}）：
+同步函索該 IP 於案發時間點之 <b>VPS 租用者個資、登入日誌(Log)、金流來源</b>。</li>
+</ol>
+</div>""")
     elif verdict == "HIJACK_SUSPECT":
-        advice = f"""
-        <div class="advice hijack">
-          <p><b>⚠️ RPKI=Invalid，BGP 招牌可能造假：</b></p>
-          <ol>
-            <li>證據力<b>優先採 RDAP 產權登記</b>（{_esc(a['legal_owner'])}），BGP origin 存疑。</li>
-            <li>函索法定所有人查證是否曾授權(LOA) AS{_esc(a['bgp_asn'])} 宣告該網段。</li>
-            <li>保全 RIS/looking-glass 之路由宣告時間軸，作為劫持事證。</li>
-          </ol>
-        </div>"""
+        advice = (
+f"""<div class="advice hijack">
+<p><b>⚠️ RPKI=Invalid，BGP 招牌可能造假：</b></p>
+<ol>
+<li>證據力<b>優先採 RDAP 產權登記</b>（{_esc(a['legal_owner'])}），BGP origin 存疑。</li>
+<li>函索法定所有人查證是否曾授權(LOA) AS{_esc(a['bgp_asn'])} 宣告該網段。</li>
+<li>保全 RIS/looking-glass 之路由宣告時間軸，作為劫持事證。</li>
+</ol>
+</div>""")
     else:
-        advice = f"""
-        <div class="advice consistent">
-          <p><b>建議：</b>直接函索 <b>{_esc(a['legal_owner'])}</b> 調閱使用者個資與連線紀錄。
-          {("Abuse 聯絡：<code>"+_esc(a['abuse_email'])+"</code>") if a.get('abuse_email') else ""}</p>
-        </div>"""
+        abuse_line = (f"Abuse 聯絡：<code>{_esc(a['abuse_email'])}</code>") if a.get('abuse_email') else ""
+        advice = (
+f"""<div class="advice consistent">
+<p><b>建議：</b>直接函索 <b>{_esc(a['legal_owner'])}</b> 調閱使用者個資與連線紀錄。
+{abuse_line}</p>
+</div>""")
 
     pinfo = result.get("proxy") or {}
     p_risk = pinfo.get("risk_level", "LOW")
