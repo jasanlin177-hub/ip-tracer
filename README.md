@@ -3,6 +3,11 @@
 輸入涉案 IP，系統自動跑完 **RDAP（法定產權）× BGP（實體路由 LPM）× RPKI（劫持偵測）** 交叉比對，
 直接吐出「公文要發給誰」的偵辦建議與可列印的 HTML 鑑識報告。全程使用即時 API，**無任何寫死資料**。
 
+## 🌐 線上使用（已部署，全國科偵可直接用）
+👉 **https://ip-tracer-hfn7obwb4gez7kjzaavxye.streamlit.app/**
+
+點開即用，免安裝、免登入，不收集任何查詢紀錄。
+
 ## 檔案
 | 檔案 | 用途 |
 |---|---|
@@ -56,7 +61,10 @@ python batch.py                      # 批次範例（多 IP → CSV）
 - **NO_BGP**：查無即時 BGP 宣告 → 以 RDAP 為主
 
 ## 上架 Streamlit Community Cloud（免費、給多人共用一個網址）
-詳細圖文步驟見 `deploy_guide.html`。摘要：
+目前已部署於 **https://ip-tracer-hfn7obwb4gez7kjzaavxye.streamlit.app/**（repo：`jasanlin177-hub/ip-tracer`，main file：`ip_analyzer.py`）。
+推上 `main` 分支後，Streamlit Cloud 會自動偵測並重新部署，網址不變。
+
+若要另外部署一份（例如給別的單位），詳細圖文步驟見 `deploy_guide.html`。摘要：
 1. 把整個資料夾推上 GitHub（公開或私有 repo 皆可）。
 2. 登入 [share.streamlit.io](https://share.streamlit.io)（用 GitHub 帳號）。
 3. **New app** → 選 repo、branch、Main file 填 `ip_analyzer.py`。
