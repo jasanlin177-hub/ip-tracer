@@ -252,6 +252,16 @@ def query_asn_holder(asn: str) -> Optional[str]:
     return holder
 
 
+def quick_asn(ip: str) -> Optional[str]:
+    """輕量 ASN 查詢（只打 network-info，不跑 looking-glass），給子網域批次掃描用。"""
+    try:
+        d = _get_json(f"{RIPESTAT}/network-info/data.json", {"resource": ip}).get("data", {})
+        asns = d.get("asns") or []
+        return str(asns[0]) if asns else None
+    except Exception:
+        return None
+
+
 # --------------------------------------------------------------------------- #
 # 3. RPKI — 路由劫持偵測
 # --------------------------------------------------------------------------- #
