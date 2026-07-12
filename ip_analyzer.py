@@ -196,9 +196,12 @@ if mode == "🔍 單筆查詢" and ip_input:
             else:
                 st.info("目前找到的候選 IP 皆為已知 CDN，未發現明顯洩漏的真實主機。")
 
-    html_report = report_mod.build_html(result)
+    # 若有做過 origin 追查（且對應本次網域），一併寫進報告
+    _hunt = st.session_state.get("origin_hunt")
+    report_hunt = _hunt if (_hunt and resolved_hostname and _hunt.get("domain") == resolved_hostname) else None
+    html_report = report_mod.build_html(result, origin_hunt=report_hunt)
     st.download_button(
-        "📄 下載 HTML 鑑識報告（公文附件）",
+        "📄 下載 HTML 鑑識報告（公文附件）" + ("（含 origin 追查結果）" if report_hunt else ""),
         data=html_report.encode("utf-8"),
         file_name=f"IP溯源報告_{ip}_{tracer.now_tw():%Y%m%d_%H%M}.html",
         mime="text/html",
