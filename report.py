@@ -13,6 +13,9 @@ import html
 import tracer as _tracer
 
 _VERDICT_TEXT = {
+    "CDN_FRONTED": ("🛰️ 偵測到 CDN／反向代理 — 此 IP 非目標網站真實主機",
+                    "此 IP 屬於已知 CDN 服務商，網站真正的來源伺服器（origin）藏在其後，"
+                    "直接函索此 IP 持有人通常僅能取得 CDN 邊緣節點的連線紀錄，查不到真正機房。"),
     "SUBLEASE": ("發現「大房東／二房東」分租現象",
                  "嫌犯實質向二房東租用伺服器作為犯罪跳板，該網段法律上仍歸屬大房東。"),
     "HIJACK_SUSPECT": ("⚠️ RPKI 驗證為 Invalid — 疑似路由劫持",
@@ -39,11 +42,13 @@ STYLE = """
   .doc code{background:#efe9db;padding:.1rem .35rem;border-radius:3px;font-family:Consolas,monospace}
   .doc .meta{color:#6b5d4f;font-size:.83rem}
   .doc .verdict{padding:.75rem 1.05rem;border-radius:4px;margin:.9rem 0;font-size:1rem;border-left:5px solid}
+  .doc .CDN_FRONTED{background:#e8dff0;border-color:#6b3fa0;color:#4a2470}
   .doc .SUBLEASE{background:#f5e3d0;border-color:#b23a2e;color:#8a2a1f}
   .doc .HIJACK_SUSPECT{background:#f7ecd6;border-color:#b8860b;color:#7a5a06}
   .doc .CONSISTENT,.doc .NO_BGP{background:#e6ece3;border-color:#3a6b4f;color:#2c5240}
   .doc .advice{background:#faf6ec;border:1px solid #e2d8c6;border-left:4px solid #1e3a5f;padding:.6rem 1rem;margin-top:.5rem}
   .doc .advice.sublease{border-left-color:#b23a2e} .doc .advice.hijack{border-left-color:#b8860b}
+  .doc .advice.cdn{border-left-color:#6b3fa0}
   .doc .kv td:first-child{width:32%;background:#f2ece0;font-weight:bold;color:#1e3a5f}
   .doc .badge{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.83rem;font-weight:bold}
   .doc .rpki-valid{background:#e6ece3;color:#2c5240} .doc .rpki-invalid{background:#f5e3d0;color:#8a2a1f}
@@ -82,7 +87,22 @@ def render_content(result: dict) -> str:
     if not rows:
         rows = "<tr><td colspan='5'>查無即時 BGP 宣告</td></tr>"
 
-    if verdict == "SUBLEASE":
+    if verdict == "CDN_FRONTED":
+        cdn_name = a.get("cdn_name") or "CDN 業者"
+        advice = (
+f"""<div class="advice cdn">
+<p><b>此 IP 為 CDN／反向代理（{_esc(cdn_name)}），並非目標網站真實主機：</b></p>
+<ol>
+<li>直接函索 <b>{_esc(a['legal_owner'])}</b>（{_esc(cdn_name)}）僅能取得 CDN 邊緣節點的連線紀錄，
+<b>無法取得網站真正架設之機房或使用者資料</b>。</li>
+<li><b>正確作法</b>：以正式公文向 {_esc(cdn_name)} 調取該網域／該次連線之
+<b>真實來源伺服器 IP（Origin IP）</b>及對應時間戳。取得 origin IP 後，
+<b>重新對該 IP 執行本系統分析</b>，才能鎖定實際機房與二房東。</li>
+<li>亦可嘗試：歷史 DNS 紀錄（查該網域套用 CDN 前是否曾指向真實 IP）、
+SSL 憑證透明度紀錄（crt.sh）、網站原始碼是否洩漏 origin IP（如子網域未套 CDN）等輔助技巧。</li>
+</ol>
+</div>""")
+    elif verdict == "SUBLEASE":
         abuse_line = (f"Abuse 聯絡：<code>{_esc(a['abuse_email'])}</code>") if a.get('abuse_email') else ""
         advice = (
 f"""<div class="advice sublease">

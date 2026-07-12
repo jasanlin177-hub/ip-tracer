@@ -48,6 +48,71 @@ def validate_ip(ip: str) -> str:
     return str(ipaddress.ip_address(ip.strip()))
 
 
+def is_ip(target: str) -> bool:
+    try:
+        validate_ip(target)
+        return True
+    except ValueError:
+        return False
+
+
+def resolve_domain(target: str) -> dict:
+    """
+    偵查人員一開始拿到的通常是網址而非 IP。
+    這裡把網址/網域解析成實際 IP（A/AAAA），交給既有流程繼續分析。
+    """
+    import socket
+    from urllib.parse import urlparse
+
+    raw = target.strip()
+    if "://" not in raw:
+        raw = "http://" + raw
+    hostname = urlparse(raw).hostname or target.strip()
+
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except socket.gaierror as e:
+        raise ValueError(f"網域解析失敗：{hostname}（{e}）")
+
+    seen, ips = set(), []
+    for info in infos:
+        ip = info[4][0]
+        if ip not in seen:
+            seen.add(ip)
+            ips.append(ip)
+
+    return {
+        "input": target,
+        "hostname": hostname,
+        "ips": ips,
+        "resolved_at": now_tw().isoformat(timespec="seconds"),
+    }
+
+
+# 常見 CDN / 反向代理業者的 ASN → 名稱。
+# 這些 IP 背後幾乎必定藏著真正的來源主機（origin），直接函索 CDN 業者
+# 通常只能拿到 CDN 邊緣節點的連線紀錄，不是網站真正架設的機房。
+CDN_ASNS = {
+    "13335": "Cloudflare",
+    "54113": "Fastly",
+    "20940": "Akamai",
+    "16625": "Akamai",
+    "21342": "Akamai",
+    "31108": "Akamai",
+    "34164": "Akamai",
+    "19551": "Imperva (Incapsula)",
+    "33438": "StackPath",
+    "30148": "Sucuri",
+    "209242": "BunnyCDN",
+}
+
+
+def cdn_provider(asn: Optional[str]) -> Optional[str]:
+    if not asn:
+        return None
+    return CDN_ASNS.get(str(asn))
+
+
 # --------------------------------------------------------------------------- #
 # 1. RDAP — 法定大房東（產權登記）
 # --------------------------------------------------------------------------- #
@@ -241,6 +306,7 @@ def assess(rdap: dict, bgp: dict, rpki: dict) -> dict:
     """
     綜合定性，回傳偵辦建議所需的結構化結論。
     verdict:
+      CDN_FRONTED     → IP 屬於已知 CDN/反向代理，真正主機藏在後面（origin），優先權最高
       HIJACK_SUSPECT  → RPKI invalid，疑似路由劫持
       SUBLEASE        → 大房東≠二房東（分租/代管）
       CONSISTENT      → 產權與路由一致
@@ -254,16 +320,20 @@ def assess(rdap: dict, bgp: dict, rpki: dict) -> dict:
             "legal_owner": legal_owner,
             "bgp_holder": None,
             "rpki_status": rpki.get("status"),
+            "cdn_name": None,
         }
 
     bgp_holder = lpm.get("holder")
     rpki_status = rpki.get("status")
+    cdn_name = cdn_provider(lpm.get("asn"))
 
     # 與『任一個』法定所有人候選名相符即視為同一實體（避免 netname 縮寫誤判分租）
     owner_names = _owner_candidates(rdap)
     matched = any(_same_org(name, bgp_holder) for name in owner_names)
 
-    if rpki_status == "invalid":
+    if cdn_name:
+        verdict = "CDN_FRONTED"
+    elif rpki_status == "invalid":
         verdict = "HIJACK_SUSPECT"
     elif not matched:
         verdict = "SUBLEASE"
@@ -280,6 +350,7 @@ def assess(rdap: dict, bgp: dict, rpki: dict) -> dict:
         "bgp_prefix": lpm.get("prefix"),
         "bgp_asn": lpm.get("asn"),
         "rpki_status": rpki_status,
+        "cdn_name": cdn_name,
     }
 
 

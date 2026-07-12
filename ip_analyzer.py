@@ -65,15 +65,33 @@ with st.sidebar:
 
 mode = st.radio("查詢模式", ["🔍 單筆查詢", "📋 批次查詢"], horizontal=True)
 
-ip_input = st.text_input("請輸入欲追查的涉案 IP（例：61.111.248.173）", "") \
-    if mode == "🔍 單筆查詢" else ""
+ip_input = st.text_input(
+    "請輸入欲追查的涉案 IP 或網址（例：61.111.248.173 或 https://example.com）", ""
+) if mode == "🔍 單筆查詢" else ""
 
 if mode == "🔍 單筆查詢" and ip_input:
-    try:
+    ip = None
+    if tracer.is_ip(ip_input):
         ip = tracer.validate_ip(ip_input)
-    except ValueError:
-        st.error("❌ IP 格式錯誤，請重新輸入。")
-        st.stop()
+    else:
+        # 偵查人員一開始通常拿到的是網址，不是 IP：先解析網域再繼續分析
+        with st.spinner(f"正在解析網域 {ip_input}…"):
+            try:
+                resolved = tracer.resolve_domain(ip_input)
+            except ValueError as e:
+                st.error(f"❌ {e}")
+                st.stop()
+
+        ipv4s = [x for x in resolved["ips"] if ":" not in x]
+        st.info(
+            f"🌐 網域 **{resolved['hostname']}** 解析出 {len(resolved['ips'])} 個 IP："
+            f"{'、'.join(resolved['ips'])}"
+        )
+        choices = ipv4s or resolved["ips"]
+        ip_choice = st.selectbox("選擇要深入分析的 IP（預設取第一個 IPv4）：", choices)
+        if not st.button("👉 分析此 IP", type="primary"):
+            st.stop()
+        ip = tracer.validate_ip(ip_choice)
 
     with st.spinner("正在進行 RDAP × BGP × RPKI 多維度交叉檢索…"):
         try:

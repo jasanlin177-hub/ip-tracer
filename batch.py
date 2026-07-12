@@ -88,8 +88,9 @@ def to_csv(results: list[dict]) -> str:
 
 
 _VERDICT_ZH = {
-    "SUBLEASE": "分租(大≠二房東)", "HIJACK_SUSPECT": "疑似路由劫持",
-    "CONSISTENT": "產權路由一致", "NO_BGP": "查無BGP", "ERROR": "查詢失敗",
+    "CDN_FRONTED": "CDN遮蔽(需調origin IP)", "SUBLEASE": "分租(大≠二房東)",
+    "HIJACK_SUSPECT": "疑似路由劫持", "CONSISTENT": "產權路由一致",
+    "NO_BGP": "查無BGP", "ERROR": "查詢失敗",
 }
 
 # 批次彙整專用的少量樣式（卡片/表格顏色與 report.STYLE 同一套司法公文風）
