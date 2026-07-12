@@ -109,6 +109,13 @@ def render_origin_section(hunt: dict) -> str:
         concl = ("<p><b>研判：</b>本次找到的候選 IP 皆屬已知 CDN，尚未發現明顯洩漏的真實主機；"
                  "建議改以正式公文向 CDN 業者調取 origin IP，或稍後重試（外部服務常暫時性失效）。</p>")
 
+    domain = hunt.get("domain", "")
+    srclinks = (
+f"""<div class="srclinks">
+<a href="https://crt.sh/?q={_esc(domain)}" target="_blank" rel="noopener">🔍 crt.sh 憑證紀錄</a>
+<a href="https://otx.alienvault.com/indicator/hostname/{_esc(domain)}" target="_blank" rel="noopener">🔍 OTX 歷史 DNS</a>
+</div>""")
+
     return (
 f"""<h2>🔍 真實來源 IP（origin IP）追查</h2>
 <p class="meta">{status}　｜　資料源皆為免金鑰公開服務，非百分之百完整，僅供辦案線索參考。</p>
@@ -116,7 +123,9 @@ f"""<h2>🔍 真實來源 IP（origin IP）追查</h2>
 <tr><th>候選 IP</th><th>ASN</th><th>CDN 判定</th><th>來源子網域</th><th>資料來源</th><th>首次出現</th><th>最後出現</th></tr>
 {rows}
 </table>
-{concl}""")
+{concl}
+<p class="meta">🔗 原始工具查證（開新分頁自行比對）：</p>
+{srclinks}""")
 
 
 def render_content(result: dict, origin_hunt: dict = None, domain: str = None) -> str:
