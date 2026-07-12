@@ -1,8 +1,12 @@
 # 科偵 IP 智慧溯源分析系統
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 輸入涉案 **IP 或網址**，系統自動跑完 **RDAP（法定產權）× BGP（實體路由 LPM）× RPKI（劫持偵測）**
 交叉比對，辨識 **CDN／反向代理遮蔽**，並嘗試**追查真實來源 IP（origin IP）**，
 直接吐出「公文要發給誰」的偵辦建議與可列印的 HTML 鑑識報告。全程使用即時 API，**無任何寫死資料**。
+
+本專案採 **MIT 授權**開源，歡迎全國科偵同仁自由使用、修改、部署自己的版本。
 
 ## 🌐 線上使用（已部署，全國科偵可直接用）
 👉 **https://ip-tracer-hfn7obwb4gez7kjzaavxye.streamlit.app/**
@@ -130,3 +134,7 @@ Streamlit Cloud 伺服器跑 UTC，所有顯示給使用者的時間（報告產
 - 網站原始碼掃描找 origin IP 洩漏（如子網域未套 CDN 的連結、內嵌資源網址）— 因涉及對目標網站發請求，
   風險與複雜度較高，目前僅做 crt.sh + OTX 兩個被動查詢管道
 - 批次查詢目前僅接受 IP，尚未支援批次網址輸入
+
+## 授權
+本專案採 [MIT License](LICENSE) 開源，可自由使用、修改、散布（含商用），僅需保留原始授權聲明。
+歡迎 fork 後依單位需求調整（如換掉查證連結清單、調整風險分級門檻），或直接部署一份自己的 Streamlit Cloud 副本。
