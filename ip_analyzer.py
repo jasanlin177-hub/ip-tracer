@@ -129,7 +129,7 @@ if mode == "🔍 單筆查詢" and ip_input:
             st.stop()
 
     # --- 查詢結果：與 HTML 報告同一份渲染邏輯 ---
-    st.markdown(report_mod.render_content(result), unsafe_allow_html=True)
+    st.markdown(report_mod.render_content(result, domain=resolved_hostname), unsafe_allow_html=True)
 
     # --- CDN 遮蔽時，提供 origin IP 追查輔助 ---
     if result["assessment"].get("verdict") == "CDN_FRONTED" and resolved_hostname:
@@ -192,14 +192,15 @@ if mode == "🔍 單筆查詢" and ip_input:
 
                 cand_result = st.session_state.get("hunt_result")
                 if cand_result and cand_result["ip"] in cand_ips:
-                    st.markdown(report_mod.render_content(cand_result), unsafe_allow_html=True)
+                    st.markdown(report_mod.render_content(cand_result, domain=resolved_hostname),
+                               unsafe_allow_html=True)
             else:
                 st.info("目前找到的候選 IP 皆為已知 CDN，未發現明顯洩漏的真實主機。")
 
     # 若有做過 origin 追查（且對應本次網域），一併寫進報告
     _hunt = st.session_state.get("origin_hunt")
     report_hunt = _hunt if (_hunt and resolved_hostname and _hunt.get("domain") == resolved_hostname) else None
-    html_report = report_mod.build_html(result, origin_hunt=report_hunt)
+    html_report = report_mod.build_html(result, origin_hunt=report_hunt, domain=resolved_hostname)
     st.download_button(
         "📄 下載 HTML 鑑識報告（公文附件）" + ("（含 origin 追查結果）" if report_hunt else ""),
         data=html_report.encode("utf-8"),

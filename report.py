@@ -35,6 +35,8 @@ STYLE = """
   .doc .seal{width:48px;height:48px;border:2px solid #b23a2e;color:#b23a2e;border-radius:6px;display:flex;
     align-items:center;justify-content:center;font-weight:700;font-size:14px;transform:rotate(-8deg);flex-shrink:0}
   .doc h2{font-size:1.04rem;color:#1e3a5f;margin:1.6rem 0 .6rem;border-left:4px solid #1e3a5f;padding-left:.6rem;letter-spacing:.5px}
+  .doc .target{font-size:1.15rem;font-weight:700;color:#1e3a5f;margin:.5rem 0 .3rem;letter-spacing:.3px}
+  .doc .target b{color:#b23a2e;font-size:1.2rem}
   .doc table{border-collapse:collapse;width:100%;margin:.5rem 0;font-size:.9rem}
   .doc th,.doc td{border:1px solid #ddd0bd;padding:.4rem .6rem;text-align:left}
   .doc th{background:#1e3a5f;color:#fff;font-weight:600}
@@ -117,10 +119,12 @@ f"""<h2>🔍 真實來源 IP（origin IP）追查</h2>
 {concl}""")
 
 
-def render_content(result: dict, origin_hunt: dict = None) -> str:
+def render_content(result: dict, origin_hunt: dict = None, domain: str = None) -> str:
     """
     回傳單筆查詢結果的 <div class="doc">…</div> 片段（不含 <html>/<style>）。
     origin_hunt：若有做過 origin IP 追查（CDN 遮蔽案件），一併寫進報告。
+    domain：若使用者一開始輸入的是網址／網域（而非直接輸入 IP），一併記錄於報告標頭，
+            完整留下「網域 → 解析 IP」的偵查鏈路，避免存證時只剩 IP、遺失原始查緝目標。
     """
     ip = result["ip"]
     rdap = result["rdap"]
@@ -205,11 +209,18 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
 
     origin_html = render_origin_section(origin_hunt) if origin_hunt else ""
 
+    target_line = (
+        f'<p class="target">涉案網域：<b>{_esc(domain)}</b>　→　解析 IP：<b>{_esc(ip)}</b></p>'
+        if domain else
+        f'<p class="target">涉案 IP：<b>{_esc(ip)}</b></p>'
+    )
+
     now = _tracer.now_tw().strftime("%Y-%m-%d %H:%M:%S") + "（UTC+8）"
     return f"""<div class="doc">
 <div class="hd">
   <div><h1>科偵 IP 智慧溯源鑑識報告</h1>
-  <p class="meta" style="margin:.4rem 0 0">涉案 IP：<b>{_esc(ip)}</b>　｜　產製時間：{now}　｜　路由基準時間：{_esc(bgp.get('timestamp'))}</p></div>
+  {target_line}
+  <p class="meta" style="margin:.2rem 0 0">產製時間：{now}　｜　路由基準時間：{_esc(bgp.get('timestamp'))}</p></div>
   <div class="seal">科偵</div>
 </div>
 
@@ -253,14 +264,15 @@ BGP 路由狀態具時效性，正式辦案請以案發時間點之路由回溯�
 </div>"""
 
 
-def build_html(result: dict, origin_hunt: dict = None) -> str:
+def build_html(result: dict, origin_hunt: dict = None, domain: str = None) -> str:
     ip = result["ip"]
+    title = f"{domain}（{ip}）" if domain else ip
     return f"""<!DOCTYPE html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
-<title>IP 溯源鑑識報告 {_esc(ip)}</title>
+<title>IP 溯源鑑識報告 {_esc(title)}</title>
 <style>
   body{{margin:2.5rem auto;max-width:900px;background:#f7f3ea}}
   {STYLE}
 </style></head><body class="doc-wrap">
-{render_content(result, origin_hunt=origin_hunt)}
+{render_content(result, origin_hunt=origin_hunt, domain=domain)}
 </body></html>"""
