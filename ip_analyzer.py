@@ -108,9 +108,17 @@ if mode == "🔍 單筆查詢" and ip_input:
         )
         choices = ipv4s or resolved["ips"]
         ip_choice = st.selectbox("選擇要深入分析的 IP（預設取第一個 IPv4）：", choices)
-        if not st.button("👉 分析此 IP", type="primary"):
+        # 用 session_state 記住「已確認要分析的 IP」，避免後續按鈕（如追查 origin）
+        # 觸發整頁 rerun 時，此按鈕變回 False 而 st.stop() 退回初始畫面。
+        if st.button("👉 分析此 IP", type="primary"):
+            st.session_state["confirmed"] = {"host": resolved["hostname"], "ip": ip_choice}
+            st.session_state.pop("origin_hunt", None)   # 換分析目標時清掉舊追查結果
+            st.session_state.pop("hunt_result", None)
+
+        confirmed = st.session_state.get("confirmed")
+        if not confirmed or confirmed["host"] != resolved["hostname"] or confirmed["ip"] not in choices:
             st.stop()
-        ip = tracer.validate_ip(ip_choice)
+        ip = tracer.validate_ip(confirmed["ip"])
         resolved_hostname = resolved["hostname"]
 
     with st.spinner("正在進行 RDAP × BGP × RPKI 多維度交叉檢索…"):
@@ -131,6 +139,12 @@ if mode == "🔍 單筆查詢" and ip_input:
             "透過憑證透明度紀錄（crt.sh）枚舉子網域，並比對 AlienVault OTX 的歷史 DNS 解析紀錄，"
             "找出套用 CDN 前或未受 CDN 保護的候選 IP。兩者皆為免金鑰公開服務，資料非百分之百完整，"
             "僅供辦案線索參考，找到候選 IP 後仍應重新查詢驗證。"
+        )
+        st.markdown(
+            f"🔗 原始工具查證（開新分頁自行比對）："
+            f"　<a href='https://crt.sh/?q={resolved_hostname}' target='_blank' rel='noopener'>crt.sh 憑證紀錄</a>"
+            f"　｜　<a href='https://otx.alienvault.com/indicator/hostname/{resolved_hostname}' target='_blank' rel='noopener'>OTX 歷史 DNS</a>",
+            unsafe_allow_html=True,
         )
         if st.button("🚀 開始追查 origin IP", key="hunt_origin_btn"):
             with st.spinner(f"正在查詢 {resolved_hostname} 的憑證紀錄與歷史 DNS…"):
