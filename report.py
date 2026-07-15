@@ -306,7 +306,7 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
         company_html_bgp = (
             "<h2>🏢 二房東台灣公司登記資訊（供製作公文參考）</h2>"
             + same_person + _company_block(ctw_bgp) + _source_note)
-    elif verdict.get("bgp_asn") and _errs:
+    elif a.get("bgp_asn") and _errs:
         # ctw_bgp 為 None 有兩種可能：① 該 ASN 本來就不是台灣（正常，不顯示任何東西）
         # ② 查詢過程真的出錯（company_tw_errors 非空）→ 才顯示失敗訊息，避免誤報
         company_html_bgp = (
