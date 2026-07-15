@@ -13,7 +13,7 @@ import html
 import tracer as _tracer
 
 _VERDICT_TEXT = {
-    "CDN_FRONTED": ("🛰️ 偵測到 CDN／反向代理 — 此 IP 非目標網站真實主機",
+    "CDN_FRONTED": ("🛰️ 偵測到 CDN（Content Delivery Network 內容傳遞網路）／反向代理 — 此 IP 非目標網站真實主機",
                     "此 IP 屬於已知 CDN 服務商，網站真正的來源伺服器（origin）藏在其後，"
                     "直接函索此 IP 持有人通常僅能取得 CDN 邊緣節點的連線紀錄，查不到真正機房。"),
     "SUBLEASE": ("發現「大房東／二房東」分租現象",
@@ -62,7 +62,23 @@ STYLE = """
   .doc .srclinks a{display:inline-block;background:#f2ece0;border:1px solid #ddd0bd;border-radius:4px;
     padding:.35rem .8rem;font-size:.85rem;color:#1e3a5f;text-decoration:none;font-weight:600}
   .doc .srclinks a:hover{background:#e6ddc9}
+  .doc .glossary{font-size:.83rem;color:#5a5044}
+  .doc .glossary td{padding:.3rem .5rem;vertical-align:top}
+  .doc .glossary td:first-child{width:24%;font-weight:bold;color:#1e3a5f;white-space:nowrap}
 """
+
+
+# 名詞說明：給非網路背景同仁看懂報告中的專有名詞（中英全名 + 白話）
+_GLOSSARY = [
+    ("RDAP", "Registration Data Access Protocol，註冊資料存取協定。查 IP／網域「登記給誰」的官方資料，等同數位產權證明。"),
+    ("BGP", "Border Gateway Protocol，邊界閘道協定。網路實際「把流量送到哪」的路由宣告，等同機房招牌。"),
+    ("LPM", "Longest Prefix Match，最精準比對優先。同一 IP 對到多個網段時，取斜線數字最大（範圍最小）者為實際流量去向。"),
+    ("RPKI／ROA", "Resource Public Key Infrastructure／Route Origin Authorization，資源公鑰基礎建設／路由起源授權。以密碼學驗證某網段是否確由合法 ASN 宣告，可偵測路由劫持。"),
+    ("ASN", "Autonomous System Number，自治系統編號。一個網路營運者（電信商、機房）在全球網路的身分編號。"),
+    ("CDN", "Content Delivery Network，內容傳遞網路。擋在網站前面的代理／加速服務（如 Cloudflare），會遮蔽真實主機。"),
+    ("Origin IP", "真實來源 IP。網站真正架設的主機 IP，藏在 CDN 之後。"),
+    ("Proxy／VPN", "代理伺服器／虛擬私人網路。可隱藏真實連線來源，常用於規避追查。"),
+]
 
 
 def _esc(x) -> str:
@@ -117,7 +133,7 @@ f"""<div class="srclinks">
 </div>""")
 
     return (
-f"""<h2>🔍 真實來源 IP（origin IP）追查</h2>
+f"""<h2>🔍 真實來源 IP（origin IP，藏在 CDN 內容傳遞網路後方的網站真正主機）追查</h2>
 <p class="meta">{status}　｜　資料源皆為免金鑰公開服務，非百分之百完整，僅供辦案線索參考。</p>
 <table>
 <tr><th>候選 IP</th><th>ASN</th><th>CDN 判定</th><th>來源子網域</th><th>資料來源</th><th>首次出現</th><th>最後出現</th></tr>
@@ -208,7 +224,7 @@ f"""<div class="advice consistent">
                    "LOW": "🟢 低（未見機房/代理特徵）"}.get(p_risk, p_risk)
     sig_html = "".join(f"<li>{_esc(s)}</li>" for s in p_signals) or "<li>—（各來源均未觸發特徵）</li>"
     proxy_html = f"""
-<h2>🛡️ 機房 / VPN / Proxy 屬性判定</h2>
+<h2>🛡️ 機房 / VPN（虛擬私人網路）/ Proxy（代理伺服器）屬性判定</h2>
 <p>綜合風險：<span class="badge risk-{p_risk}">{_risk_label}</span></p>
 <p>觸發訊號：</p><ul>{sig_html}</ul>
 <p class="meta">來源：IP2Location.io（IP2Proxy）× ip-api.com × ASN 關鍵字/BGP 結構啟發式。
@@ -217,6 +233,13 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
 """
 
     origin_html = render_origin_section(origin_hunt) if origin_hunt else ""
+
+    glossary_rows = "".join(
+        f"<tr><td>{_esc(term)}</td><td>{_esc(desc)}</td></tr>" for term, desc in _GLOSSARY)
+    glossary_html = (
+        '<h2>📖 名詞說明（給非網路背景同仁）</h2>'
+        f'<table class="glossary">{glossary_rows}</table>'
+    )
 
     # 台灣 IP 公司登記（方便製作公文）
     ctw = result.get("company_tw")
@@ -256,7 +279,7 @@ f"""<h2>🏢 台灣公司登記資訊（供製作公文參考）</h2>
 
 <div class="verdict {verdict}"><b>偵查定性：{v_title}</b><br>{v_desc}</div>
 
-<h2>📜 RDAP 產權證明（法定大房東）</h2>
+<h2>📜 RDAP（Registration Data Access Protocol 註冊資料存取協定）產權證明（法定大房東）</h2>
 <table class="kv">
 <tr><td>法定所有人</td><td>{_esc(rdap.get('name'))}</td></tr>
 <tr><td>所屬國家</td><td>{_esc(rdap.get('country'))}</td></tr>
@@ -265,13 +288,13 @@ f"""<h2>🏢 台灣公司登記資訊（供製作公文參考）</h2>
 <tr><td>資料來源</td><td>{_esc(rdap.get('raw_source'))}</td></tr>
 </table>
 {company_html}
-<h2>🪧 BGP 實體路由（最精準二房東）＋ 重疊網段拆解</h2>
-<p>已套用 <b>最精準比對優先（Longest Prefix Match）</b>，斜線數字越大者優先：</p>
+<h2>🪧 BGP（Border Gateway Protocol 邊界閘道協定）實體路由（最精準二房東）＋ 重疊網段拆解</h2>
+<p>已套用 <b>最精準比對優先（Longest Prefix Match，LPM）</b>，斜線數字越大者優先：</p>
 <table>
 <tr><th>網段</th><th>Origin ASN</th><th>ASN 持有人</th><th>涵蓋 IP 數</th><th>研判</th></tr>
 {rows}
 </table>
-<p>RPKI ROA 驗證（{_esc(a.get('bgp_prefix'))} × AS{_esc(a.get('bgp_asn'))}）：
+<p>RPKI（Resource Public Key Infrastructure 資源公鑰基礎建設）ROA 驗證（{_esc(a.get('bgp_prefix'))} × AS{_esc(a.get('bgp_asn'))}）：
 <span class="badge rpki-{_esc(rpki.get('status'))}">{_esc(rpki.get('status','unknown')).upper()}</span>
 　<span class="meta">valid=已授權可信／invalid=疑似劫持／unknown=無 ROA 無法驗證</span></p>
 {proxy_html}
@@ -287,6 +310,7 @@ f"""<h2>🏢 台灣公司登記資訊（供製作公文參考）</h2>
 <h2>🚨 科技偵查發文調閱建議</h2>
 {advice}
 {origin_html}
+{glossary_html}
 <footer>
 本報告由「科偵 IP 智慧溯源分析系統」自動產製，資料擷取自 ICANN RDAP bootstrap 與 RIPEstat（RIPE NCC）即時 API。
 BGP 路由狀態具時效性，正式辦案請以案發時間點之路由回溯資料為準，並保全原始 API 回應。
