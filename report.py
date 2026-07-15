@@ -218,6 +218,27 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
 
     origin_html = render_origin_section(origin_hunt) if origin_hunt else ""
 
+    # 台灣 IP 公司登記（方便製作公文）
+    ctw = result.get("company_tw")
+    if ctw:
+        _addr = ctw.get("address")
+        company_html = (
+f"""<h2>🏢 台灣公司登記資訊（供製作公文參考）</h2>
+<table class="kv">
+<tr><td>中文名稱</td><td><b style="font-size:1.1rem;color:#b23a2e">{_esc(ctw.get('chinese_name'))}</b></td></tr>
+<tr><td>英文名稱</td><td>{_esc(ctw.get('org_name'))}</td></tr>
+<tr><td>登記地址</td><td>{_esc(_addr)}</td></tr>
+<tr><td>網路名稱</td><td><code>{_esc(ctw.get('netname'))}</code></td></tr>
+</table>
+<p class="meta">資料來源：TWNIC（台灣網路資訊中心）IP 登記資料。此為<b>網路區段登記之公司</b>，
+未必等同實際使用者；電話未收錄於此資料庫，請以下方連結至商工登記查詢。</p>
+<div class="srclinks">
+<a href="https://findbiz.nat.gov.tw/fts/query/QueryList/queryList.do?qryCond={_esc(ctw.get('org_name') or '')}" target="_blank" rel="noopener">🏢 經濟部商工登記查詢（查統編/電話/負責人）</a>
+<a href="https://rms.twnic.tw/query_whois1.php" target="_blank" rel="noopener">🌐 TWNIC 原始查詢（自行核對）</a>
+</div>""")
+    else:
+        company_html = ""
+
     target_line = (
         f'<p class="target">涉案網域：<b>{_esc(domain)}</b>　→　解析 IP：<b>{_esc(ip)}</b></p>'
         if domain else
@@ -243,7 +264,7 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
 <tr><td>Abuse 聯絡</td><td>{_esc(rdap.get('abuse_email'))}</td></tr>
 <tr><td>資料來源</td><td>{_esc(rdap.get('raw_source'))}</td></tr>
 </table>
-
+{company_html}
 <h2>🪧 BGP 實體路由（最精準二房東）＋ 重疊網段拆解</h2>
 <p>已套用 <b>最精準比對優先（Longest Prefix Match）</b>，斜線數字越大者優先：</p>
 <table>

@@ -2,3 +2,5 @@ streamlit>=1.30
 requests>=2.31
 # 鎖 pandas 2.x：pandas 3.0 + pyarrow 在 Streamlit Cloud 顯示表格時會 segfault
 pandas<3
+# 台灣公司登記查詢（TWNIC）需 HTTP/2，requests 不支援，故用 httpx[http2]
+httpx[http2]>=0.27

@@ -388,6 +388,15 @@ def analyze(ip: str, timestamp: Optional[str] = None,
         is_sublease=(verdict.get("verdict") == "SUBLEASE"),
     )
 
+    # 台灣 IP：自動補公司登記資訊（中文名／登記地址），方便製作公文
+    company_tw = None
+    if (rdap.get("country") or "").upper() == "TW":
+        try:
+            import company_tw as _company_tw
+            company_tw = _company_tw.lookup(ip)
+        except Exception:
+            company_tw = None
+
     return {
         "ip": ip,
         "queried_at": now_tw().isoformat(timespec="seconds"),
@@ -397,6 +406,7 @@ def analyze(ip: str, timestamp: Optional[str] = None,
         "rpki": rpki,
         "assessment": verdict,
         "proxy": proxy_info,
+        "company_tw": company_tw,
     }
 
 
