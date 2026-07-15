@@ -388,14 +388,24 @@ def analyze(ip: str, timestamp: Optional[str] = None,
         is_sublease=(verdict.get("verdict") == "SUBLEASE"),
     )
 
-    # 台灣 IP：自動補公司登記資訊（中文名／登記地址），方便製作公文
-    company_tw = None
-    if (rdap.get("country") or "").upper() == "TW":
-        try:
-            import company_tw as _company_tw
-            company_tw = _company_tw.lookup(ip)
-        except Exception:
-            company_tw = None
+    # 台灣公司登記：大房東（IP 登記人）與二房東（BGP 宣告 ASN）分別查，方便製作公文
+    # 並能一眼看出兩者是否為同一負責人（自我分租）。
+    company_tw = None       # 大房東
+    company_tw_bgp = None   # 二房東
+    try:
+        import company_tw as _ctw
+        if (rdap.get("country") or "").upper() == "TW":
+            company_tw = _ctw.company_for_ip(ip)
+        bgp_asn = verdict.get("bgp_asn")
+        if bgp_asn:  # 二房東 ASN 若非台灣，company_for_asn 會回 None
+            company_tw_bgp = _ctw.company_for_asn(bgp_asn)
+    except Exception:
+        pass
+    # 若二房東與大房東為同一家（統編相同），不重複顯示
+    if (company_tw and company_tw_bgp
+            and company_tw.get("tax_id")
+            and company_tw.get("tax_id") == company_tw_bgp.get("tax_id")):
+        company_tw_bgp = None
 
     return {
         "ip": ip,
@@ -407,6 +417,7 @@ def analyze(ip: str, timestamp: Optional[str] = None,
         "assessment": verdict,
         "proxy": proxy_info,
         "company_tw": company_tw,
+        "company_tw_bgp": company_tw_bgp,
     }
 
 

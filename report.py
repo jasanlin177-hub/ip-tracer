@@ -81,6 +81,36 @@ _GLOSSARY = [
 ]
 
 
+def _company_block(c: dict) -> str:
+    """單一台灣公司登記的表格片段（中英地址對照 + 統編 + 負責人）。"""
+    if not c:
+        return ""
+    rows = [
+        ("角色", _esc(c.get("role"))),
+        ("中文名稱", f'<b style="font-size:1.1rem;color:#b23a2e">{_esc(c.get("chinese_name"))}</b>'),
+    ]
+    if c.get("org_name"):
+        rows.append(("英文名稱", _esc(c.get("org_name"))))
+    if c.get("tax_id"):
+        rows.append(("統一編號", f'<b>{_esc(c.get("tax_id"))}</b>'))
+    if c.get("responsible"):
+        rows.append(("負責人", f'<b>{_esc(c.get("responsible"))}</b>'))
+    if c.get("address_zh"):
+        rows.append(("登記地址（中文）", _esc(c.get("address_zh"))))
+    if c.get("address_en"):
+        rows.append(("登記地址（英文）", _esc(c.get("address_en"))))
+    if c.get("netname"):
+        rows.append(("網路名稱", f'<code>{_esc(c.get("netname"))}</code>'))
+    trs = "".join(f"<tr><td>{k}</td><td>{v}</td></tr>" for k, v in rows)
+    findbiz = ("https://findbiz.nat.gov.tw/fts/query/QueryList/queryList.do?qryCond="
+               + _esc(c.get("chinese_name") or ""))
+    return (
+f"""<table class="kv">{trs}</table>
+<div class="srclinks">
+<a href="{findbiz}" target="_blank" rel="noopener">🏢 經濟部商工登記查詢（核對正本／電話）</a>
+</div>""")
+
+
 def _esc(x) -> str:
     return html.escape(str(x)) if x is not None else "—"
 
@@ -241,26 +271,32 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
         f'<table class="glossary">{glossary_rows}</table>'
     )
 
-    # 台灣 IP 公司登記（方便製作公文）
-    ctw = result.get("company_tw")
-    if ctw:
-        _addr = ctw.get("address")
+    # 台灣公司登記（大房東 + 二房東，方便製作公文）
+    ctw_big = result.get("company_tw")
+    ctw_bgp = result.get("company_tw_bgp")
+    company_html = ""
+    if ctw_big or ctw_bgp:
+        blocks = ""
+        if ctw_big:
+            blocks += _company_block(ctw_big)
+        if ctw_bgp:
+            blocks += _company_block(ctw_bgp)
+        # 大房東與二房東負責人相同 → 自我分租，重要線索
+        same_person = ""
+        if (ctw_big and ctw_bgp and ctw_big.get("responsible")
+                and ctw_big.get("responsible") == ctw_bgp.get("responsible")):
+            same_person = (
+                f'<div class="verdict SUBLEASE"><b>⚠️ 重要線索：大房東與二房東負責人同為'
+                f'「{_esc(ctw_big.get("responsible"))}」</b><br>'
+                f'兩家台灣公司由同一人擔任負責人，研判為<b>同一實際控制人之關係企業自我分租</b>，'
+                f'可一併調閱、循同一金流／人流追查。</div>')
         company_html = (
-f"""<h2>🏢 台灣公司登記資訊（供製作公文參考）</h2>
-<table class="kv">
-<tr><td>中文名稱</td><td><b style="font-size:1.1rem;color:#b23a2e">{_esc(ctw.get('chinese_name'))}</b></td></tr>
-<tr><td>英文名稱</td><td>{_esc(ctw.get('org_name'))}</td></tr>
-<tr><td>登記地址</td><td>{_esc(_addr)}</td></tr>
-<tr><td>網路名稱</td><td><code>{_esc(ctw.get('netname'))}</code></td></tr>
-</table>
-<p class="meta">資料來源：TWNIC（台灣網路資訊中心）IP 登記資料。此為<b>網路區段登記之公司</b>，
-未必等同實際使用者；電話未收錄於此資料庫，請以下方連結至商工登記查詢。</p>
-<div class="srclinks">
-<a href="https://findbiz.nat.gov.tw/fts/query/QueryList/queryList.do?qryCond={_esc(ctw.get('org_name') or '')}" target="_blank" rel="noopener">🏢 經濟部商工登記查詢（查統編/電話/負責人）</a>
-<a href="https://rms.twnic.tw/query_whois1.php" target="_blank" rel="noopener">🌐 TWNIC 原始查詢（自行核對）</a>
-</div>""")
-    else:
-        company_html = ""
+            "<h2>🏢 台灣公司登記資訊（供製作公文參考）</h2>"
+            + same_person + blocks
+            + '<p class="meta">中文資料源：g0v 公司登記 API（同經濟部 GCIS 資料之公民科技鏡像）；'
+              'IP／ASN 登記源：TWNIC。此為<b>網路區段／ASN 登記之公司</b>，未必等同實際使用者；'
+              '台灣公開登記不揭露公司電話，請點上方連結至官方商工登記核對正本並查詢電話。</p>'
+        )
 
     target_line = (
         f'<p class="target">涉案網域：<b>{_esc(domain)}</b>　→　解析 IP：<b>{_esc(ip)}</b></p>'

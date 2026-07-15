@@ -3,8 +3,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 輸入涉案 **IP 或網址**，系統自動跑完 **RDAP（法定產權）× BGP（實體路由 LPM）× RPKI（劫持偵測）**
-交叉比對，辨識 **CDN／反向代理遮蔽**，並嘗試**追查真實來源 IP（origin IP）**，
-直接吐出「公文要發給誰」的偵辦建議與可列印的 HTML 鑑識報告。全程使用即時 API，**無任何寫死資料**。
+交叉比對，辨識 **CDN／反向代理遮蔽**，嘗試**追查真實來源 IP（origin IP）**，
+台灣 IP 還會**自動補上公司登記中文名稱與地址**，直接吐出「公文要發給誰」的偵辦建議與可列印的
+HTML 鑑識報告（含專有名詞白話說明）。全程使用即時 API，**無任何寫死資料**。
 
 本專案採 **MIT 授權**開源，歡迎全國科偵同仁自由使用、修改、部署自己的版本。
 
@@ -17,9 +18,10 @@
 | 檔案 | 用途 |
 |---|---|
 | `tracer.py` | 核心邏輯（純函式）：RDAP / BGP / RPKI / LPM / CDN 偵測 / 定性引擎 / 網域解析。可單獨 CLI 執行 |
-| `report.py` | 產生 HTML 鑑識報告（公文附件），含 origin IP 追查區塊 |
+| `report.py` | 產生 HTML 鑑識報告（公文附件），含 origin IP 追查、台灣公司登記、名詞說明區塊 |
 | `proxy.py` | 機房／VPN／Proxy 屬性判定（IP2Location.io × ip-api × 啟發式） |
 | `origin_finder.py` | CDN 遮蔽案件的 origin IP 追查：crt.sh 憑證紀錄 + AlienVault OTX 歷史 DNS |
+| `company_tw.py` | 台灣公司登記查詢：大房東(TWNIC IP)＋二房東(TWNIC ASN 表)，再以 g0v 補統編／中文地址／負責人 |
 | `batch.py` | 批次查詢：多 IP 解析、節流分析、CSV／HTML 彙整輸出 |
 | `ip_analyzer.py` | Streamlit 網頁介面（單筆／批次雙模式，單筆支援網址輸入） |
 
@@ -70,12 +72,44 @@ python batch.py                      # 批次範例（多 IP → CSV）
 > 「略過／失敗」，不會靜默回空清單讓人誤以為「沒有資料」。找不到線索也不代表沒有 origin，
 > 仍應改用正式公文向 CDN 業者調取，或稍後重試。
 
+## 台灣公司登記查詢（方便製作公文）
+台灣 IP 的案件，報告「🏢 台灣公司登記資訊」區塊會**同時列出大房東與二房東兩家公司**，
+各含中文名、統一編號、負責人、**中英文登記地址對照**：
+
+| 對象 | 中文名怎麼來 | 補完 |
+|---|---|---|
+| **大房東**（RDAP 產權登記人） | TWNIC Whois 用 **IP** 查 → 中文名 + 英文地址 | g0v 補中文地址／統編／負責人 |
+| **二房東**（BGP 宣告者） | TWNIC ASN 核發對照表 用 **BGP 的 ASN** 反查 → 中文名 | g0v 補中文地址／統編／負責人 |
+
+- **中英文地址對照**：英文地址來自 TWNIC，中文地址來自 g0v，皆為原始登記資料，**不做地址翻譯**（避免翻錯）。
+- **🎯 同負責人自我分租偵測**：若大房東與二房東負責人為同一人，報告最上方紅框警示
+  「同一實際控制人之關係企業自我分租」，提示可循同一金流／人流一併追查。
+- 大房東與二房東為同一家（統編相同）時只顯示一次。
+
+**資料源與安全**：
+- TWNIC（`rms.twnic.tw`）：IP／ASN 登記，端點強制 HTTP/2（HTTP/1.1 會收到 `426 Upgrade Required`），
+  故用 `httpx[http2]`，走正常 TLS 憑證驗證。
+- g0v 公司登記 API（`company.g0v.ronny.tw`）：同經濟部 GCIS 資料之**公民科技鏡像**，憑證正常。
+  用於自動帶入方便同仁；報告一律附**官方「經濟部商工登記查詢」連結**，證據力以官方正本為準。
+  （GCIS 官方 API 憑證缺 Subject Key Identifier，Python 嚴格模式拒連，為避免調弱 TLS 故改用 g0v 鏡像。）
+
+> ⚠️ 限制：① 此為**網路區段／ASN 登記之公司**，未必等同實際使用者。② 台灣公開登記**不揭露公司電話**，
+> 請點報告內連結至官方商工登記查詢核對正本並查電話。③ 僅台灣（TWNIC 管理）之 IP／ASN 有資料。
+
+## 專有名詞白話說明
+考量部分同仁對網路名詞較陌生，報告採**兩層加註**：
+- **主要標題內嵌全名**：如「BGP（Border Gateway Protocol 邊界閘道協定）」「RDAP（Registration Data Access
+  Protocol 註冊資料存取協定）」「RPKI（Resource Public Key Infrastructure 資源公鑰基礎建設）」等
+- **文末統一名詞說明表**：RDAP／BGP／LPM／RPKI・ROA／ASN／CDN／Origin IP／Proxy・VPN 各附中英全名 + 一句白話
+
 ## 資料來源
 - **RDAP**：`https://rdap.org/ip/{ip}`（ICANN 官方 bootstrap，302 轉址到權責 RIR）
 - **BGP**：RIPEstat `network-info` + `looking-glass`（RIPE RIS 即時路由，支援 `timestamp` 回溯案發時間）
 - **ASN 持有人**：RIPEstat `as-overview`
 - **RPKI**：RIPEstat `rpki-validation`（valid / invalid / unknown）
 - **機房/Proxy**：IP2Location.io（IP2Proxy，免金鑰 1000/日，給金鑰更完整）＋ ip-api.com（proxy/hosting/mobile）＋ ASN 關鍵字/BGP 分租結構啟發式
+- **origin IP 追查**：crt.sh（憑證透明度）+ AlienVault OTX（passive DNS），皆免金鑰
+- **台灣公司登記**：TWNIC RMS Whois／ASN 對照表（`rms.twnic.tw`，HTTP/2）＋ g0v 公司登記 API（`company.g0v.ronny.tw`，同 GCIS 資料鏡像）
 
 ## 原始工具查證連結
 每份報告最後附「🔗 原始工具查證連結」，一鍵帶入本次查詢的 IP／網段開新分頁核對：
@@ -114,8 +148,8 @@ python batch.py                      # 批次範例（多 IP → CSV）
 4. （可選）Advanced settings 選 Python 3.11+。
 5. Deploy，幾分鐘後得到一個 `https://xxx.streamlit.app` 公開網址，分享給同仁即可。
 
-需要進版控的檔案：`ip_analyzer.py`、`tracer.py`、`proxy.py`、`origin_finder.py`、`batch.py`、`report.py`、
-`requirements.txt`、`.streamlit/config.toml`。（`.gitignore` 已排除本機測試產出。）
+需要進版控的檔案：`ip_analyzer.py`、`tracer.py`、`proxy.py`、`origin_finder.py`、`company_tw.py`、`batch.py`、
+`report.py`、`requirements.txt`、`.streamlit/config.toml`。（`.gitignore` 已排除本機測試產出。）
 
 **營運提醒（非機密）**：ip-api 免費版依伺服器 IP 限速 45 次/分，全國共用一個網址時共享此額度；
 人多時可申請付費金鑰或改採本機/內網各自執行。
