@@ -271,50 +271,48 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
         f'<table class="glossary">{glossary_rows}</table>'
     )
 
-    # 台灣公司登記（大房東 + 二房東，方便製作公文）
+    # 台灣公司登記：大房東卡放在 RDAP 之後、二房東卡放在 BGP 之後
+    # （閱讀順序：先看 RDAP 出現大房東→接大房東公司卡；再看 BGP 出現二房東→接二房東公司卡）
     ctw_big = result.get("company_tw")
     ctw_bgp = result.get("company_tw_bgp")
     is_tw = (rdap.get("country") or "").upper() == "TW"
-    company_html = ""
-    if ctw_big or ctw_bgp:
-        blocks = ""
-        if ctw_big:
-            blocks += _company_block(ctw_big)
-        if ctw_bgp:
-            blocks += _company_block(ctw_bgp)
-        # 大房東與二房東負責人相同 → 自我分租，重要線索
+    _errs = result.get("company_tw_errors") or []
+    _err_html = "".join(f"<li><code>{_esc(e)}</code></li>" for e in _errs) or "<li>（無詳細錯誤紀錄）</li>"
+    _source_note = ('<p class="meta">中文資料源：g0v 公司登記 API（同經濟部 GCIS 資料之公民科技鏡像）；'
+                    'IP／ASN 登記源：TWNIC。此為<b>網路區段／ASN 登記之公司</b>，未必等同實際使用者；'
+                    '台灣公開登記不揭露公司電話，請點上方連結至官方商工登記核對正本並查詢電話。</p>')
+
+    company_html_big = ""
+    if ctw_big:
+        company_html_big = (
+            "<h2>🏢 大房東台灣公司登記資訊（供製作公文參考）</h2>"
+            + _company_block(ctw_big) + _source_note)
+    elif is_tw:
+        company_html_big = (
+            '<h2>🏢 大房東台灣公司登記資訊（供製作公文參考）</h2>'
+            '<p class="meta">⚠️ 本次查詢失敗（TWNIC／g0v 服務暫時無法連線或逾時），請稍後重試：</p>'
+            f'<ul class="meta">{_err_html}</ul>')
+
+    company_html_bgp = ""
+    if ctw_bgp:
         same_person = ""
-        if (ctw_big and ctw_bgp and ctw_big.get("responsible")
+        if (ctw_big and ctw_big.get("responsible")
                 and ctw_big.get("responsible") == ctw_bgp.get("responsible")):
             same_person = (
                 f'<div class="verdict SUBLEASE"><b>⚠️ 重要線索：大房東與二房東負責人同為'
                 f'「{_esc(ctw_big.get("responsible"))}」</b><br>'
                 f'兩家台灣公司由同一人擔任負責人，研判為<b>同一實際控制人之關係企業自我分租</b>，'
                 f'可一併調閱、循同一金流／人流追查。</div>')
-        # 大房東是台灣 IP 卻查失敗（二房東查成功才會走到這支），一併顯示原因，不靜默漏掉
-        big_fail_note = ""
-        if is_tw and not ctw_big:
-            errs = result.get("company_tw_errors") or []
-            err_html = "".join(f"<li><code>{_esc(e)}</code></li>" for e in errs) or "<li>（無詳細錯誤紀錄）</li>"
-            big_fail_note = ('<p class="meta">⚠️ 大房東（IP 登記人）公司登記查詢本次失敗：</p>'
-                             f'<ul class="meta">{err_html}</ul>')
-        company_html = (
-            "<h2>🏢 台灣公司登記資訊（供製作公文參考）</h2>"
-            + same_person + blocks + big_fail_note
-            + '<p class="meta">中文資料源：g0v 公司登記 API（同經濟部 GCIS 資料之公民科技鏡像）；'
-              'IP／ASN 登記源：TWNIC。此為<b>網路區段／ASN 登記之公司</b>，未必等同實際使用者；'
-              '台灣公開登記不揭露公司電話，請點上方連結至官方商工登記核對正本並查詢電話。</p>'
-        )
-    elif is_tw:
-        # 台灣 IP 但本次大房東、二房東都查無公司資料：明確顯示原因，不再靜默消失
-        errs = result.get("company_tw_errors") or []
-        err_html = "".join(f"<li><code>{_esc(e)}</code></li>" for e in errs) or "<li>（無詳細錯誤紀錄）</li>"
-        company_html = (
-            '<h2>🏢 台灣公司登記資訊（供製作公文參考）</h2>'
-            '<p class="meta">⚠️ 本次查詢台灣公司登記資訊失敗（TWNIC／g0v 服務暫時無法連線或逾時），'
-            '請稍後重試。若持續失敗，錯誤細節如下：</p>'
-            f'<ul class="meta">{err_html}</ul>'
-        )
+        company_html_bgp = (
+            "<h2>🏢 二房東台灣公司登記資訊（供製作公文參考）</h2>"
+            + same_person + _company_block(ctw_bgp) + _source_note)
+    elif verdict.get("bgp_asn") and _errs:
+        # ctw_bgp 為 None 有兩種可能：① 該 ASN 本來就不是台灣（正常，不顯示任何東西）
+        # ② 查詢過程真的出錯（company_tw_errors 非空）→ 才顯示失敗訊息，避免誤報
+        company_html_bgp = (
+            '<h2>🏢 二房東台灣公司登記資訊（供製作公文參考）</h2>'
+            '<p class="meta">⚠️ 本次查詢失敗（TWNIC／g0v 服務暫時無法連線或逾時），請稍後重試：</p>'
+            f'<ul class="meta">{_err_html}</ul>')
 
     target_line = (
         f'<p class="target">涉案網域：<b>{_esc(domain)}</b>　→　解析 IP：<b>{_esc(ip)}</b></p>'
@@ -341,7 +339,7 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
 <tr><td>Abuse 聯絡</td><td>{_esc(rdap.get('abuse_email'))}</td></tr>
 <tr><td>資料來源</td><td>{_esc(rdap.get('raw_source'))}</td></tr>
 </table>
-{company_html}
+{company_html_big}
 <h2>🪧 BGP（Border Gateway Protocol 邊界閘道協定）實體路由（最精準二房東）＋ 重疊網段拆解</h2>
 <p>已套用 <b>最精準比對優先（Longest Prefix Match，LPM）</b>，斜線數字越大者優先：</p>
 <table>
@@ -351,6 +349,7 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
 <p>RPKI（Resource Public Key Infrastructure 資源公鑰基礎建設）ROA 驗證（{_esc(a.get('bgp_prefix'))} × AS{_esc(a.get('bgp_asn'))}）：
 <span class="badge rpki-{_esc(rpki.get('status'))}">{_esc(rpki.get('status','unknown')).upper()}</span>
 　<span class="meta">valid=已授權可信／invalid=疑似劫持／unknown=無 ROA 無法驗證</span></p>
+{company_html_bgp}
 {proxy_html}
 <h2>🔗 原始工具查證連結</h2>
 <p class="meta">以上為系統自動整合研判，若需自行比對原始資料來源存證，可點選以下官方查詢頁面（會開新分頁，帶入本次查詢的 IP／網段）：</p>
