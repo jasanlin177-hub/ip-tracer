@@ -390,17 +390,24 @@ def analyze(ip: str, timestamp: Optional[str] = None,
 
     # 台灣公司登記：大房東（IP 登記人）與二房東（BGP 宣告 ASN）分別查，方便製作公文
     # 並能一眼看出兩者是否為同一負責人（自我分租）。
-    company_tw = None       # 大房東
-    company_tw_bgp = None   # 二房東
+    # 查詢過程若失敗（套件未安裝、連線被擋、逾時…）一律記錄原因，不再靜默消失，
+    # 才能在部署環境（如 Streamlit Cloud）追出實際問題。
+    company_tw = None          # 大房東
+    company_tw_bgp = None      # 二房東
+    company_tw_errors: list[str] = []
     try:
         import company_tw as _ctw
-        if (rdap.get("country") or "").upper() == "TW":
+        _ctw._reset_errors()
+        is_tw = (rdap.get("country") or "").upper() == "TW"
+        if is_tw:
             company_tw = _ctw.company_for_ip(ip)
         bgp_asn = verdict.get("bgp_asn")
-        if bgp_asn:  # 二房東 ASN 若非台灣，company_for_asn 會回 None
+        if bgp_asn:  # 二房東 ASN 若非台灣，company_for_asn 會回 None（非錯誤）
             company_tw_bgp = _ctw.company_for_asn(bgp_asn)
-    except Exception:
-        pass
+        if is_tw and not company_tw:
+            company_tw_errors = _ctw.last_errors()
+    except Exception as e:
+        company_tw_errors = [f"[tracer] {type(e).__name__}: {e}"]
     # 若二房東與大房東為同一家（統編相同），不重複顯示
     if (company_tw and company_tw_bgp
             and company_tw.get("tax_id")
@@ -418,6 +425,7 @@ def analyze(ip: str, timestamp: Optional[str] = None,
         "proxy": proxy_info,
         "company_tw": company_tw,
         "company_tw_bgp": company_tw_bgp,
+        "company_tw_errors": company_tw_errors,
     }
 
 

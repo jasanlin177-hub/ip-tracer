@@ -23,8 +23,10 @@ from typing import Optional
 try:
     import httpx
     _HAS_HTTPX = True
-except ImportError:
+    _HTTPX_IMPORT_ERROR = None
+except ImportError as e:
     _HAS_HTTPX = False
+    _HTTPX_IMPORT_ERROR = str(e)
 
 TWNIC_WHOIS = "https://rms.twnic.tw/query_whois1.php"
 TWNIC_ASN_LIST = "https://rms.twnic.tw/help_asn_assign.php"
@@ -33,6 +35,25 @@ UA = {"User-Agent": "KKB-IP-Tracer/1.0 (forensic-use)"}
 TIMEOUT = 20
 
 _asn_table_cache: Optional[dict] = None  # {asn(str): {"netname","company"}}
+
+# 失敗診斷：每次查詢失敗時記下「哪個步驟、什麼原因」，讓部署環境的問題不再靜默消失。
+# 單一 Streamlit 請求為單執行緒處理，模組級變數足夠用於單次查詢的診斷。
+_last_errors: list[str] = []
+
+
+def _log_error(step: str, exc: Exception) -> None:
+    _last_errors.append(f"[{step}] {type(exc).__name__}: {exc}")
+
+
+def last_errors() -> list[str]:
+    """回傳最近一次查詢過程中發生的所有錯誤（不影響主流程，僅供診斷）。"""
+    return list(_last_errors)
+
+
+def _reset_errors() -> None:
+    _last_errors.clear()
+    if not _HAS_HTTPX:
+        _last_errors.append(f"[import] httpx 未安裝或載入失敗: {_HTTPX_IMPORT_ERROR}")
 
 
 def _clean(s: str) -> str:
@@ -61,7 +82,8 @@ def _twnic_whois_ip(ip: str) -> dict:
             "address_en": raw.get("Street Address"),
             "netname": raw.get("Netname"),
         }
-    except Exception:
+    except Exception as e:
+        _log_error("TWNIC-whois-ip", e)
         return {}
 
 
@@ -82,7 +104,8 @@ def _load_asn_table() -> dict:
                 if len(cells) >= 3 and cells[0].upper().startswith("AS"):
                     asn = cells[0].upper().replace("AS", "").strip()
                     table[asn] = {"netname": cells[1], "company": cells[2]}
-        except Exception:
+        except Exception as e:
+            _log_error("TWNIC-asn-table", e)
             table = {}
     _asn_table_cache = table
     return table
@@ -105,8 +128,13 @@ def _g0v_enrich(chinese_name: str) -> dict:
     try:
         with httpx.Client(timeout=TIMEOUT, headers=UA) as c:
             r = c.get(G0V_SEARCH, params={"q": chinese_name})
-        found = r.json().get("data", []) if r.status_code == 200 else []
-    except Exception:
+        if r.status_code != 200:
+            _log_error("g0v-enrich", Exception(f"HTTP {r.status_code}"))
+            found = []
+        else:
+            found = r.json().get("data", [])
+    except Exception as e:
+        _log_error("g0v-enrich", e)
         return {}
     # 精確比對公司名（避免「天空數位」誤中「天空數位圖書」）
     exact = [x for x in found if x.get("公司名稱") == chinese_name]

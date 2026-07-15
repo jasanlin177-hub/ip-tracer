@@ -274,6 +274,7 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
     # 台灣公司登記（大房東 + 二房東，方便製作公文）
     ctw_big = result.get("company_tw")
     ctw_bgp = result.get("company_tw_bgp")
+    is_tw = (rdap.get("country") or "").upper() == "TW"
     company_html = ""
     if ctw_big or ctw_bgp:
         blocks = ""
@@ -290,12 +291,29 @@ LOW 不代表必非機房，仍應併同 RDAP/BGP 分租結構判讀。</p>
                 f'「{_esc(ctw_big.get("responsible"))}」</b><br>'
                 f'兩家台灣公司由同一人擔任負責人，研判為<b>同一實際控制人之關係企業自我分租</b>，'
                 f'可一併調閱、循同一金流／人流追查。</div>')
+        # 大房東是台灣 IP 卻查失敗（二房東查成功才會走到這支），一併顯示原因，不靜默漏掉
+        big_fail_note = ""
+        if is_tw and not ctw_big:
+            errs = result.get("company_tw_errors") or []
+            err_html = "".join(f"<li><code>{_esc(e)}</code></li>" for e in errs) or "<li>（無詳細錯誤紀錄）</li>"
+            big_fail_note = ('<p class="meta">⚠️ 大房東（IP 登記人）公司登記查詢本次失敗：</p>'
+                             f'<ul class="meta">{err_html}</ul>')
         company_html = (
             "<h2>🏢 台灣公司登記資訊（供製作公文參考）</h2>"
-            + same_person + blocks
+            + same_person + blocks + big_fail_note
             + '<p class="meta">中文資料源：g0v 公司登記 API（同經濟部 GCIS 資料之公民科技鏡像）；'
               'IP／ASN 登記源：TWNIC。此為<b>網路區段／ASN 登記之公司</b>，未必等同實際使用者；'
               '台灣公開登記不揭露公司電話，請點上方連結至官方商工登記核對正本並查詢電話。</p>'
+        )
+    elif is_tw:
+        # 台灣 IP 但本次大房東、二房東都查無公司資料：明確顯示原因，不再靜默消失
+        errs = result.get("company_tw_errors") or []
+        err_html = "".join(f"<li><code>{_esc(e)}</code></li>" for e in errs) or "<li>（無詳細錯誤紀錄）</li>"
+        company_html = (
+            '<h2>🏢 台灣公司登記資訊（供製作公文參考）</h2>'
+            '<p class="meta">⚠️ 本次查詢台灣公司登記資訊失敗（TWNIC／g0v 服務暫時無法連線或逾時），'
+            '請稍後重試。若持續失敗，錯誤細節如下：</p>'
+            f'<ul class="meta">{err_html}</ul>'
         )
 
     target_line = (
